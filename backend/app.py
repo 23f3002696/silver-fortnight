@@ -19,13 +19,13 @@ app = create_app()
 
 from application.routes import *
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # db.create_all()
     # db.session.add(User(
-    #     username='admin', 
-    #     email='admin@silver-fortnight.com', 
-    #     password='admin', 
-    #     role='admin'
+    #     username="admin", 
+    #     email="admin@silver-fortnight.com", 
+    #     password="admin", 
+    #     role="admin"
     #     )
     # )
     # db.session.commit()
