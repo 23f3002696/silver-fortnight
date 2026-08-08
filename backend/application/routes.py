@@ -18,7 +18,7 @@ def login():
     password = request.json.get("password", None)
 
     user = User.query.filter_by(username=username).one_or_none()
-    if not user or not user.password == password:
+    if not user or not user.check_password(password):
         return jsonify("Wrong username or password"), 401
 
     access_token= create_access_token(identity=user)
@@ -37,8 +37,7 @@ def login():
 # def logout():
 #     return jsonify({"msg": "Successfully logged out"}), 200
 
-@app.route()
+@app.route("/admin-only")
 @role_required("admin")
 def admin_only():
     return jsonify("This is an admin-only route")
-
