@@ -1,6 +1,11 @@
 import LoginView from "./views/Login.js";
 import RegisterView from "./views/Register.js";
-import AdminDashboardView from "./views/AdminDashboard.js";
+import AdminLayout from "./views/admin/AdminLayout.js";
+import AdminOverview from "./views/admin/AdminOverview.js";
+import AdminTreks from "./views/admin/AdminTreks.js";
+import AdminStaff from "./views/admin/AdminStaff.js";
+import AdminUsers from "./views/admin/AdminUsers.js";
+import AdminBookings from "./views/admin/AdminBookings.js";
 import StaffDashboardView from "./views/StaffDashboard.js";
 import UserDashboardView from "./views/UserDashboard.js";
 import NotFoundView from "./views/NotFound.js";
@@ -8,13 +13,22 @@ import { authState, fetchCurrentUser, dashboardPathForRole } from "./auth.js";
 
 const { createRouter, createWebHashHistory } = VueRouter;
 
-// Hash-based routing (e.g. /#/login) so Flask only ever has to serve one
-// real route ("/") -- no server-side catch-all needed for a page refresh.
 const routes = [
   { path: "/", redirect: "/login" },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
-  { path: "/admin", name: "admin", component: AdminDashboardView, meta: { role: "admin" } },
+  {
+    path: "/admin",
+    component: AdminLayout,
+    meta: { role: "admin" },
+    children: [
+      { path: "", name: "admin-overview", component: AdminOverview },
+      { path: "treks", name: "admin-treks", component: AdminTreks },
+      { path: "staff", name: "admin-staff", component: AdminStaff },
+      { path: "users", name: "admin-users", component: AdminUsers },
+      { path: "bookings", name: "admin-bookings", component: AdminBookings },
+    ],
+  },
   { path: "/staff", name: "staff", component: StaffDashboardView, meta: { role: "staff" } },
   { path: "/user", name: "user", component: UserDashboardView, meta: { role: "user" } },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
@@ -26,16 +40,12 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
-  // Resolve the session (token -> GET /api/auth/me) once, before the very
-  // first navigation decision -- this is what makes a page refresh keep
-  // you logged in instead of bouncing to /login.
   if (!authState.ready) {
     await fetchCurrentUser();
   }
 
   const isLoggedIn = !!authState.user;
 
-  // Logged-in users shouldn't see the login/register forms again.
   if (to.meta.guestOnly && isLoggedIn) {
     return dashboardPathForRole(authState.user.role);
   }
@@ -44,9 +54,6 @@ router.beforeEach(async (to) => {
     if (!isLoggedIn) {
       return { path: "/login", query: { redirect: to.fullPath } };
     }
-    // Logged in, but the wrong role for this route (e.g. a Trekker
-    // hitting /admin directly) -- send them to their own dashboard
-    // instead of a dead end.
     if (authState.user.role !== to.meta.role) {
       return dashboardPathForRole(authState.user.role);
     }
