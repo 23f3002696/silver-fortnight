@@ -8,6 +8,7 @@ from application.constants import Role, StaffStatus
 from flask_cors import CORS
 from application.celery_init import celery_init_app
 from celery.schedules import crontab
+from application.cache import cache, invalidate_user_caches
 
 def create_app():
     app = Flask(
@@ -16,6 +17,7 @@ def create_app():
         static_folder="../frontend/static")
     app.config.from_object(LocalDevelopmentConfig)
     db.init_app(app)
+    cache.init_app(app)
     jwt.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     return app
@@ -67,6 +69,7 @@ def create_admin(username, email, password):
     admin.set_password(password)
     db.session.add(admin)
     db.session.commit()
+    invalidate_user_caches()
     click.echo(f"Admin user '{username}' created.")
  
  
@@ -90,6 +93,7 @@ def create_staff(username, email, password, name, contact):
  
     db.session.add(staff_user)
     db.session.commit()
+    invalidate_user_caches()
     click.echo(f"Trek Staff user '{username}' created.")
  
  

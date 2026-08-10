@@ -9,6 +9,23 @@ from .constants import BookingStatus, Role, StaffStatus, TrekDifficulty, TrekSta
 from .security import jwt_blocklist
 from celery.result import AsyncResult
 from .tasks import export_user_bookings_csv, send_monthly_report
+from .cache import (
+    _serialize_staff,
+    _serialize_trek,
+    build_admin_dashboard_payload,
+    build_admin_staff_payload,
+    build_admin_treks_payload,
+    build_admin_users_payload,
+    build_public_treks_payload,
+    cached_admin_dashboard,
+    cached_admin_staff,
+    cached_admin_treks,
+    cached_admin_users,
+    cached_public_treks,
+    invalidate_staff_caches,
+    invalidate_trek_caches,
+    invalidate_user_caches,
+)
 
 def role_required(*roles):
     def wrapper(func):
@@ -54,6 +71,7 @@ def register():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    invalidate_user_caches()
  
     access_token = create_access_token(identity=user, additional_claims={"role": user.role})
     return jsonify(
@@ -95,26 +113,6 @@ def logout():
 @jwt_required()
 def me():
     return jsonify(user=current_user.to_dict())
-
- 
-def _serialize_trek(trek):
-    d = trek.to_dict()
-    if trek.assigned_staff:
-        d["assigned_staff_name"] = trek.assigned_staff.name or trek.assigned_staff.user.username
-    else:
-        d["assigned_staff_name"] = None
-    d["bookings_count"] = len(trek.bookings)
-    d["active_bookings_count"] = sum(1 for b in trek.bookings if b.status != BookingStatus.CANCELLED)
-    return d
-
-
-def _serialize_staff(staff):
-    d = staff.to_dict()
-    d["username"] = staff.user.username
-    d["email"] = staff.user.email
-    d["is_active"] = staff.user.is_active
-    d["assigned_treks_count"] = len(staff.assigned_treks)
-    return d
 
 
 def _serialize_participant(booking):
@@ -203,37 +201,27 @@ def _validate_trek_payload(data, partial=False):
 @app.route("/api/admin/dashboard", methods=["GET"])
 @role_required(Role.ADMIN)
 def admin_dashboard():
-    treks_by_status = {status: Trek.query.filter_by(status=status).count() for status in TrekStatus.ALL}
-
-    return jsonify(
-        total_treks=Trek.query.count(),
-        total_users=User.query.filter_by(role=Role.USER).count(),
-        total_staff=User.query.filter_by(role=Role.STAFF).count(),
-        total_bookings=Booking.query.count(),
-        treks_by_status=treks_by_status,
-    )
+    try:
+        payload = cached_admin_dashboard()
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh admin dashboard stats.")
+        payload = build_admin_dashboard_payload()
+    return jsonify(**payload)
 
 
 @app.route("/api/admin/treks", methods=["GET"])
 @role_required(Role.ADMIN)
 def admin_list_treks():
-    query = Trek.query
-
-    q = (request.args.get("q") or "").strip()
-    if q:
-        like = f"%{q}%"
-        query = query.filter(or_(Trek.name.ilike(like), Trek.location.ilike(like)))
-
+    q = (request.args.get("q") or "").strip()[:50]
     status = (request.args.get("status") or "").strip().lower()
-    if status:
-        query = query.filter_by(status=status)
-
     difficulty = (request.args.get("difficulty") or "").strip().lower()
-    if difficulty:
-        query = query.filter_by(difficulty=difficulty)
 
-    treks = query.order_by(Trek.created_at.desc()).all()
-    return jsonify(treks=[_serialize_trek(t) for t in treks])
+    try:
+        treks = cached_admin_treks(q, status, difficulty)
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh admin trek list.")
+        treks = build_admin_treks_payload(q, status, difficulty)
+    return jsonify(treks=treks)
 
 
 @app.route("/api/admin/treks", methods=["POST"])
@@ -247,6 +235,7 @@ def admin_create_trek():
     trek = Trek(**fields)
     db.session.add(trek)
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(message="Trek created.", trek=_serialize_trek(trek)), 201
 
 
@@ -265,6 +254,7 @@ def admin_update_trek(trek_id):
     for key, value in fields.items():
         setattr(trek, key, value)
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(message="Trek updated.", trek=_serialize_trek(trek))
 
 
@@ -282,23 +272,21 @@ def admin_delete_trek(trek_id):
 
     db.session.delete(trek)
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(message="Trek deleted.")
 
 
 @app.route("/api/admin/staff", methods=["GET"])
 @role_required(Role.ADMIN)
 def admin_list_staff():
-    query = StaffProfile.query.join(User)
+    q = (request.args.get("q") or "").strip()[:50]
 
-    q = (request.args.get("q") or "").strip()
-    if q:
-        like = f"%{q}%"
-        query = query.filter(
-            or_(User.username.ilike(like), User.email.ilike(like), StaffProfile.name.ilike(like))
-        )
-
-    staff_members = query.order_by(User.username).all()
-    return jsonify(staff=[_serialize_staff(s) for s in staff_members])
+    try:
+        staff = cached_admin_staff(q)
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh staff list.")
+        staff = build_admin_staff_payload(q)
+    return jsonify(staff=staff)
 
 
 @app.route("/api/admin/staff", methods=["POST"])
@@ -322,6 +310,7 @@ def admin_create_staff():
     )
     db.session.add(staff_user)
     db.session.commit()
+    invalidate_staff_caches()
     return jsonify(
         message="Trek Staff account created.", staff=_serialize_staff(staff_user.staff_profile)
     ), 201
@@ -340,6 +329,7 @@ def admin_update_staff(staff_id):
     if "contact_number" in data:
         staff.contact_number = (data.get("contact_number") or "").strip() or None
     db.session.commit()
+    invalidate_staff_caches()
     return jsonify(message="Staff member updated.", staff=_serialize_staff(staff))
 
 
@@ -353,6 +343,7 @@ def admin_toggle_staff_active(staff_id):
     staff.user.is_active = not staff.user.is_active
     staff.status = StaffStatus.ACTIVE if staff.user.is_active else StaffStatus.DEACTIVATED
     db.session.commit()
+    invalidate_staff_caches()
     action = "reactivated" if staff.user.is_active else "deactivated"
     return jsonify(message=f"Staff member {action}.", staff=_serialize_staff(staff))
 
@@ -370,26 +361,21 @@ def admin_delete_staff(staff_id):
 
     db.session.delete(staff.user)
     db.session.commit()
+    invalidate_staff_caches()
     return jsonify(message="Staff member removed.")
 
 
 @app.route("/api/admin/users", methods=["GET"])
 @role_required(Role.ADMIN)
 def admin_list_users():
-    query = User.query.filter_by(role=Role.USER)
+    q = (request.args.get("q") or "").strip()[:50]
 
-    q = (request.args.get("q") or "").strip()
-    if q:
-        like = f"%{q}%"
-        query = query.filter(or_(User.username.ilike(like), User.email.ilike(like)))
-
-    users = query.order_by(User.username).all()
-    result = []
-    for u in users:
-        d = u.to_dict()
-        d["bookings_count"] = len(u.bookings)
-        result.append(d)
-    return jsonify(users=result)
+    try:
+        users = cached_admin_users(q)
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh user list.")
+        users = build_admin_users_payload(q)
+    return jsonify(users=users)
 
 
 @app.route("/api/admin/users/<int:user_id>/toggle-active", methods=["POST"])
@@ -401,6 +387,7 @@ def admin_toggle_user_active(user_id):
 
     user.is_active = not user.is_active
     db.session.commit()
+    invalidate_user_caches()
     action = "reactivated" if user.is_active else "blacklisted"
     return jsonify(message=f"User {action}.", user=user.to_dict())
 
@@ -547,6 +534,7 @@ def staff_update_trek(trek_id):
                 booking.status = BookingStatus.COMPLETED
 
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(message="Trek updated.", trek=_serialize_trek(trek))
 
 
@@ -580,6 +568,7 @@ def staff_cancel_participant(trek_id, booking_id):
     booking.status = BookingStatus.CANCELLED
     trek.available_slots += 1
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(
         message="Booking cancelled.",
         trek=_serialize_trek(trek),
@@ -654,27 +643,37 @@ def user_dashboard():
 @app.route("/api/user/treks", methods=["GET"])
 @role_required(Role.USER)
 def user_list_treks():
-    query = Trek.query.filter(Trek.status.in_([TrekStatus.APPROVED, TrekStatus.OPEN]))
-
-    q = (request.args.get("q") or "").strip()
-    if q:
-        like = f"%{q}%"
-        query = query.filter(or_(Trek.name.ilike(like), Trek.location.ilike(like)))
-
+    q = (request.args.get("q") or "").strip()[:50]
     difficulty = (request.args.get("difficulty") or "").strip().lower()
-    if difficulty:
-        query = query.filter_by(difficulty=difficulty)
-
     min_duration = request.args.get("min_duration", type=int)
-    if min_duration is not None:
-        query = query.filter(Trek.duration_days >= min_duration)
-
     max_duration = request.args.get("max_duration", type=int)
-    if max_duration is not None:
-        query = query.filter(Trek.duration_days <= max_duration)
+    try:
+        base_rows = cached_public_treks(q, difficulty, min_duration, max_duration)
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh trek listing.")
+        base_rows = build_public_treks_payload(q, difficulty, min_duration, max_duration)
 
-    treks = query.order_by(Trek.created_at.desc()).all()
-    return jsonify(treks=[_serialize_user_trek(t) for t in treks])
+    latest_by_trek = {}
+    user_bookings = (
+        Booking.query.filter(Booking.user_id == current_user.id)
+        .order_by(Booking.booking_date.desc())
+        .all()
+    )
+    for booking in user_bookings:
+        latest_by_trek.setdefault(booking.trek_id, booking)
+
+    treks = []
+    for row in base_rows:
+        d = dict(row)
+        latest = latest_by_trek.get(d["id"])
+        if latest and latest.status != BookingStatus.CANCELLED:
+            d["user_booking_status"] = latest.status
+            d["user_booking_id"] = latest.id
+        else:
+            d["user_booking_status"] = None
+            d["user_booking_id"] = None
+        treks.append(d)
+    return jsonify(treks=treks)
 
 
 @app.route("/api/user/treks/<int:trek_id>/book", methods=["POST"])
@@ -699,6 +698,7 @@ def user_book_trek(trek_id):
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
+    invalidate_trek_caches()
 
     return jsonify(
         message="Trek booked successfully.",
@@ -732,6 +732,7 @@ def user_cancel_booking(booking_id):
     booking.status = BookingStatus.CANCELLED
     booking.trek.available_slots += 1
     db.session.commit()
+    invalidate_trek_caches()
     return jsonify(message="Booking cancelled.", booking=_serialize_user_booking(booking))
 
 
@@ -785,6 +786,8 @@ def user_update_profile():
         current_user.set_password(new_password)
 
     db.session.commit()
+
+    invalidate_user_caches()
     return jsonify(message="Profile updated.", user=current_user.to_dict())
 
 
@@ -821,7 +824,6 @@ def user_export_bookings_download(task_id):
         return jsonify(message="Export is not ready yet."), 400
 
     filename = result.result.get("filename")
-    # Only allow a user to download their own export file.
     if not filename or f"user{current_user.id}_" not in filename:
         return jsonify(message="Export not found."), 404
 
