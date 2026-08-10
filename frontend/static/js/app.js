@@ -137,11 +137,6 @@ const App = {
 
               <template v-else>
                 <li class="nav-item">
-                  <router-link class="nav-link" to="/" exact-active-class="active">
-                    <i class="bi bi-graph-up me-1"></i>Live Stats
-                  </router-link>
-                </li>
-                <li class="nav-item">
                   <router-link class="nav-link" to="/login" active-class="active">Sign in</router-link>
                 </li>
                 <li class="nav-item">

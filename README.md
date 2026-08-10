@@ -144,7 +144,7 @@ Three processes are needed in development:
 
 ```bash
 # Terminal 1 — Flask API + frontend (from backend/)
-flask --app app run
+flask --app app run # flask --app app run --port 5050
 
 # Terminal 2 — Celery worker (from backend/)
 celery -A app.celery worker --loglevel=info

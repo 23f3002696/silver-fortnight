@@ -24,6 +24,17 @@ export default {
   async created() {
     await this.fetchStats();
   },
+  computed: {
+    hasTrend() {
+      return (this.stats?.booking_trend?.counts || []).some((v) => v > 0);
+    },
+    hasPopular() {
+      return (this.stats?.popular_treks || []).length > 0;
+    },
+    hasDifficulty() {
+      return Object.values(this.stats?.participation_by_difficulty || {}).some((v) => v > 0);
+    },
+  },
   beforeUnmount() {
     destroyChart(this.trendChart);
     destroyChart(this.popularChart);
@@ -52,7 +63,8 @@ export default {
       if (!this.stats) return;
 
       const trend = this.stats.booking_trend || { labels: [], counts: [] };
-      this.trendChart = renderChart(this.$refs.trendCanvas, {
+      if (this.hasTrend) {
+        this.trendChart = renderChart(this.$refs.trendCanvas, {
         type: "bar",
         data: {
           labels: trend.labels.map(formatMonthLabel),
@@ -66,19 +78,21 @@ export default {
             },
           ],
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
-            x: { grid: { display: false } },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
+              x: { grid: { display: false } },
+            },
           },
-        },
-      });
+        });
+      }
 
       const popular = this.stats.popular_treks || [];
-      this.popularChart = renderChart(this.$refs.popularCanvas, {
+      if (this.hasPopular) {
+        this.popularChart = renderChart(this.$refs.popularCanvas, {
         type: "bar",
         data: {
           labels: popular.map((t) => t.name),
@@ -92,22 +106,24 @@ export default {
             },
           ],
         },
-        options: {
-          indexAxis: "y",
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
-            y: { grid: { display: false } },
+          options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
+              y: { grid: { display: false } },
+            },
           },
-        },
-      });
+        });
+      }
 
       const difficulty = this.stats.participation_by_difficulty || {};
       const labels = Object.keys(difficulty);
       const values = Object.values(difficulty);
-      this.difficultyChart = renderChart(this.$refs.difficultyCanvas, {
+      if (this.hasDifficulty) {
+        this.difficultyChart = renderChart(this.$refs.difficultyCanvas, {
         type: "doughnut",
         data: {
           labels,
@@ -119,15 +135,16 @@ export default {
             },
           ],
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "62%",
-          plugins: {
-            legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "62%",
+            plugins: {
+              legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } },
+            },
           },
-        },
-      });
+        });
+      }
     },
   },
   template: `
@@ -200,15 +217,15 @@ export default {
         </div>
 
         <template v-else>
-          <div class="row g-3 mt-1">
-            <div class="col-lg-8">
+          <div v-if="hasTrend || hasDifficulty" class="row g-3 mt-1">
+            <div v-if="hasTrend" class="col-lg-8">
               <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Booking Trend</h6>
                 <p class="text-muted small mb-3">Where trekkers have been heading over the last 6 months.</p>
                 <div style="height: 260px;"><canvas ref="trendCanvas"></canvas></div>
               </div>
             </div>
-            <div class="col-lg-4">
+            <div v-if="hasDifficulty" class="col-lg-4">
               <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
                 <p class="text-muted small mb-3">How trekkers split their time between easy, moderate and hard trails.</p>
@@ -218,7 +235,7 @@ export default {
           </div>
 
           <div class="row g-3 mt-1">
-            <div class="col-lg-7">
+            <div v-if="hasPopular" class="col-lg-7">
               <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Trending Treks</h6>
                 <p class="text-muted small mb-3">The trails everyone is booking, ranked by bookings.</p>
@@ -227,7 +244,7 @@ export default {
                 </div>
               </div>
             </div>
-            <div class="col-lg-5">
+            <div :class="hasPopular ? 'col-lg-5' : 'col-lg-12'">
               <div class="border rounded p-4 h-100 d-flex flex-column">
                 <h6 class="fw-semibold mb-3">Ready for the trail?</h6>
                 <ul class="list-unstyled small text-secondary d-flex flex-column gap-2 mb-4">
