@@ -25,7 +25,6 @@ const App = {
         bootstrap.Collapse.getOrCreateInstance(el).hide();
       }
     },
-    // showToast(message, type) — type: 'success' | 'danger' | 'warning' | 'info'
     showToast(message, type = "success") {
       const id = ++_nextToastId;
       this.toasts.push({ id, message, type });
@@ -33,7 +32,6 @@ const App = {
         this.toasts = this.toasts.filter((t) => t.id !== id);
       }, 4500);
     },
-    // showConfirm(message) — returns a Promise<boolean>
     showConfirm(message) {
       return new Promise((resolve) => {
         this.confirmState = { show: true, message, resolve };
@@ -51,7 +49,6 @@ const App = {
   template: `
     <div class="min-vh-100">
 
-      <!-- ── Navbar ── -->
       <nav class="navbar navbar-expand-lg sticky-top border-bottom shadow-sm">
         <div class="container">
           <router-link class="navbar-brand d-flex align-items-center gap-2" to="/">
@@ -74,7 +71,6 @@ const App = {
           <div class="collapse navbar-collapse" id="navbarNav" ref="navCollapse">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0" @click="closeMobileNav">
 
-              <!-- Admin nav -->
               <template v-if="authState.user && authState.user.role === 'admin'">
                 <li class="nav-item">
                   <router-link class="nav-link" to="/admin" exact-active-class="active">
@@ -108,7 +104,6 @@ const App = {
                 </li>
               </template>
 
-              <!-- Staff nav -->
               <template v-else-if="authState.user && authState.user.role === 'staff'">
                 <li class="nav-item">
                   <router-link class="nav-link" to="/staff" active-class="active">
@@ -117,7 +112,6 @@ const App = {
                 </li>
               </template>
 
-              <!-- User nav -->
               <template v-else-if="authState.user && authState.user.role === 'user'">
                 <li class="nav-item">
                   <router-link class="nav-link" to="/user" exact-active-class="active">
@@ -141,7 +135,6 @@ const App = {
                 </li>
               </template>
 
-              <!-- Guest nav -->
               <template v-else>
                 <li class="nav-item">
                   <router-link class="nav-link" to="/" exact-active-class="active">
@@ -157,7 +150,6 @@ const App = {
               </template>
             </ul>
 
-            <!-- User info + logout -->
             <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mt-3 mt-lg-0 ms-lg-3">
               <span v-if="authState.user" class="small text-muted d-flex align-items-center gap-2">
                 <span class="avatar" style="width:1.9rem;height:1.9rem;font-size:0.8rem;">
@@ -176,12 +168,10 @@ const App = {
         </div>
       </nav>
 
-      <!-- ── Page content ── -->
       <main class="container py-4">
         <router-view />
       </main>
 
-      <!-- ── Toast notifications ── -->
       <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1200;">
         <div
           v-for="toast in toasts"
@@ -209,7 +199,6 @@ const App = {
         </div>
       </div>
 
-      <!-- ── Global confirmation modal ── -->
       <div
         v-if="confirmState.show"
         class="modal d-block"
@@ -240,7 +229,6 @@ app.use(router);
 
 router.isReady().then(() => {
   const instance = app.mount("#app");
-  // Expose toast and confirm as globals so all child components can call them
   window.showToast = (msg, type) => instance.showToast(msg, type);
   window.showConfirm = (msg) => instance.showConfirm(msg);
 });

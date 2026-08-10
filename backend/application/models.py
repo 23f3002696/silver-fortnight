@@ -17,11 +17,9 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default=Role.USER)
 
-    # Admin's "blacklist/deactivate users or staff" functionality.
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
-    # User (role=staff) <-> StaffProfile : one-to-one
     staff_profile = db.relationship(
         "StaffProfile",
         backref="user",
@@ -29,7 +27,6 @@ class User(db.Model):
         cascade="all, delete-orphan",
     )
 
-    # User (role=user) <-> Booking : one-to-many
     bookings = db.relationship(
         "Booking",
         backref="user",
@@ -41,7 +38,6 @@ class User(db.Model):
         db.CheckConstraint(f"role IN {Role.ALL}", name="ck_user_role_valid"),
     )
 
-    # password helpers
     def set_password(self, raw_password):
         self.password = generate_password_hash(raw_password)
 
@@ -71,7 +67,6 @@ class StaffProfile(db.Model):
     contact_number = db.Column(db.String(20))
     status = db.Column(db.String(20), nullable=False, default=StaffStatus.ACTIVE)
 
-    # StaffProfile <-> Trek : one-to-many (a staff member can be assigned
     assigned_treks = db.relationship("Trek", backref="assigned_staff", lazy=True)
 
     __table_args__ = (
@@ -106,10 +101,8 @@ class Trek(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
-    # Trek Staff <-> Trek : many-to-one (nullable until admin assigns staff)
     assigned_staff_id = db.Column(db.Integer, db.ForeignKey("staff_profile.id"), nullable=True)
 
-    # Trek <-> Booking : one-to-many
     bookings = db.relationship(
         "Booking",
         backref="trek",
@@ -134,6 +127,7 @@ class Trek(db.Model):
             "status": self.status,
             "start_date": self.start_date.isoformat() if self.start_date else None,
             "end_date": self.end_date.isoformat() if self.end_date else None,
+            "description": self.description,
             "assigned_staff_id": self.assigned_staff_id,
         }
 

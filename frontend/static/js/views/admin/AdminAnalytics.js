@@ -37,8 +37,6 @@ export default {
       } finally {
         this.loading = false;
       }
-      // Schedule chart rendering only after loading is false, so the
-      // re-render that mounts the canvases happens before we read $refs.
       if (this.stats && !this.error) {
         this.$nextTick(() => this.renderCharts());
       }
@@ -48,7 +46,6 @@ export default {
       this.charts.forEach(destroyChart);
       this.charts = [];
 
-      // Monthly booking trend + participation (line, last 12 months)
       const trend = this.stats.monthly_trend || { labels: [], bookings: [], participants: [] };
       this.charts.push(
         renderChart(this.$refs.trendCanvas, {
@@ -88,7 +85,6 @@ export default {
         })
       );
 
-      // Booking status breakdown (doughnut)
       const byStatus = this.stats.bookings_by_status || {};
       this.charts.push(
         renderChart(this.$refs.statusCanvas, {
@@ -114,7 +110,6 @@ export default {
         })
       );
 
-      // Most popular treks (horizontal bar)
       const popular = this.stats.popular_treks || [];
       this.charts.push(
         renderChart(this.$refs.popularCanvas, {
@@ -144,7 +139,6 @@ export default {
         })
       );
 
-      // Participation by difficulty (doughnut)
       const difficulty = this.stats.participation_by_difficulty || {};
       const labels = Object.keys(difficulty);
       this.charts.push(
@@ -189,7 +183,6 @@ export default {
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-else>
-        <!-- Headline numbers -->
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="stat-card">
@@ -221,7 +214,6 @@ export default {
           </div>
         </div>
 
-        <!-- Monthly trend + booking status -->
         <div class="row g-3 mt-1">
           <div class="col-lg-8">
             <div class="border rounded p-4 h-100">
@@ -239,7 +231,6 @@ export default {
           </div>
         </div>
 
-        <!-- Popular treks + top participants -->
         <div class="row g-3 mt-1">
           <div class="col-lg-7">
             <div class="border rounded p-4 h-100">
@@ -280,7 +271,6 @@ export default {
           </div>
         </div>
 
-        <!-- Difficulty mix -->
         <div class="row g-3 mt-1">
           <div class="col-lg-4">
             <div class="border rounded p-4">

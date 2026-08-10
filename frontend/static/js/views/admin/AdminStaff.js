@@ -165,7 +165,6 @@ export default {
         </div>
       </div>
 
-      <!-- Add Staff Modal -->
       <div class="modal fade" tabindex="-1" ref="staffModalEl">
         <div class="modal-dialog">
           <div class="modal-content">

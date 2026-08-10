@@ -37,8 +37,6 @@ def create_app():
 
 app = create_app()
 
-app.app_context().push()
-
 celery = celery_init_app(app)
 
 
@@ -57,7 +55,8 @@ def setup_periodic_tasks(sender, **kwargs):
         name="monthly-admin-report",
     )
 
-from application.routes import *
+with app.app_context():
+    import application.routes
 
 @app.route("/")
 def index():

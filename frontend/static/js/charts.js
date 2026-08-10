@@ -1,7 +1,3 @@
-// Shared Chart.js helpers for the Reports, Charts and Analytics milestone.
-// Chart.js is loaded via CDN in index.html and exposes the global `Chart`.
-
-// Palette consistent with the pastel colours used across the app UI.
 export const CHART_COLORS = {
   blue: "#90CAF9",
   green: "#A5D6A7",
@@ -31,10 +27,6 @@ export const BOOKING_STATUS_COLORS = {
   completed: CHART_COLORS.purple,
 };
 
-/**
- * Create (or replace) a Chart.js instance on the given canvas element.
- * Returns the Chart instance, or null when Chart.js failed to load.
- */
 export function renderChart(canvas, config) {
   if (!canvas || typeof Chart === "undefined") return null;
   const existing = Chart.getChart(canvas);
@@ -42,12 +34,10 @@ export function renderChart(canvas, config) {
   return new Chart(canvas.getContext("2d"), config);
 }
 
-/** Destroy a Chart.js instance (safe to call with null). */
 export function destroyChart(chart) {
   if (chart) chart.destroy();
 }
 
-/** Turn a 'YYYY-MM' month key into a short label like 'Aug 26'. */
 export function formatMonthLabel(key) {
   const d = new Date(`${key}-01T00:00:00`);
   if (isNaN(d)) return key;

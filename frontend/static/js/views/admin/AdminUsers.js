@@ -144,7 +144,6 @@ export default {
         </div>
       </div>
 
-      <!-- Trekking History Modal -->
       <div class="modal fade" tabindex="-1" ref="historyModalEl">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">

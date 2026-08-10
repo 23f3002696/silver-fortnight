@@ -12,7 +12,6 @@ export default {
       confirmPassword: "",
       error: "",
       fieldErrors: {},
-      // Track which fields have been interacted with for on-blur validation
       touched: { username: false, email: false, password: false, confirmPassword: false },
       loading: false,
     };
@@ -56,7 +55,6 @@ export default {
       this.touched[field] = true;
     },
     async handleSubmit() {
-      // Reveal all validation errors on submit
       Object.keys(this.touched).forEach((k) => (this.touched[k] = true));
       if (!this.canSubmit) return;
 
@@ -95,7 +93,6 @@ export default {
 
             <form @submit.prevent="handleSubmit" novalidate>
 
-              <!-- Username -->
               <div class="mb-3">
                 <label class="form-label" for="reg-username">Username</label>
                 <input
@@ -114,7 +111,6 @@ export default {
                 <div class="invalid-feedback">{{ usernameError || fieldErrors.username }}</div>
               </div>
 
-              <!-- Email -->
               <div class="mb-3">
                 <label class="form-label" for="reg-email">Email</label>
                 <input
@@ -133,7 +129,6 @@ export default {
                 <div class="invalid-feedback">{{ emailError || fieldErrors.email }}</div>
               </div>
 
-              <!-- Password -->
               <div class="mb-3">
                 <label class="form-label" for="reg-password">Password</label>
                 <input
@@ -152,7 +147,6 @@ export default {
                 <div class="invalid-feedback">{{ passwordError || fieldErrors.password }}</div>
               </div>
 
-              <!-- Confirm password -->
               <div class="mb-4">
                 <label class="form-label" for="reg-confirm">Confirm password</label>
                 <input

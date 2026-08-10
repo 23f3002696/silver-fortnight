@@ -208,7 +208,6 @@ export default {
       } catch (err) {
         const body = err.response?.data;
         if (body?.booking) {
-          // Keep the row's payment badge in sync (e.g. declined -> failed).
           const row = this.bookings.find((b) => b.id === body.booking.id);
           if (row) row.payment_status = body.booking.payment_status;
         }
@@ -305,7 +304,6 @@ export default {
         </div>
       </div>
 
-      <!-- ── Payment simulation modal ── -->
       <div
         v-if="payment.show"
         class="modal d-block"

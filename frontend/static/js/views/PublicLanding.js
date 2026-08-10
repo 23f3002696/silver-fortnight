@@ -44,8 +44,6 @@ export default {
       } finally {
         this.loading = false;
       }
-      // Schedule chart rendering only after loading is false, so the
-      // re-render that mounts the canvases happens before we read $refs.
       if (this.stats && !this.error) {
         this.$nextTick(() => this.renderCharts());
       }
@@ -53,7 +51,6 @@ export default {
     renderCharts() {
       if (!this.stats) return;
 
-      // Booking trend — last 6 months (bar)
       const trend = this.stats.booking_trend || { labels: [], counts: [] };
       this.trendChart = renderChart(this.$refs.trendCanvas, {
         type: "bar",
@@ -80,7 +77,6 @@ export default {
         },
       });
 
-      // Most popular treks (horizontal bar)
       const popular = this.stats.popular_treks || [];
       this.popularChart = renderChart(this.$refs.popularCanvas, {
         type: "bar",
@@ -108,7 +104,6 @@ export default {
         },
       });
 
-      // Participation by difficulty (doughnut)
       const difficulty = this.stats.participation_by_difficulty || {};
       const labels = Object.keys(difficulty);
       const values = Object.values(difficulty);
@@ -137,7 +132,6 @@ export default {
   },
   template: `
     <div>
-      <!-- Hero -->
       <div class="hero-panel p-4 p-md-5 text-center mb-4">
         <span class="stat-icon chip-green d-block mx-auto" style="width:3.4rem;height:3.4rem;font-size:1.5rem;border-radius:0.9rem;">
           <i class="bi bi-compass"></i>
@@ -169,7 +163,6 @@ export default {
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
 
       <template v-else>
-        <!-- Stat cards -->
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="stat-card">
@@ -206,7 +199,6 @@ export default {
         </div>
 
         <template v-else>
-          <!-- Charts row 1 -->
           <div class="row g-3 mt-1">
             <div class="col-lg-8">
               <div class="border rounded p-4 h-100">
@@ -224,7 +216,6 @@ export default {
             </div>
           </div>
 
-          <!-- Charts row 2 -->
           <div class="row g-3 mt-1">
             <div class="col-lg-7">
               <div class="border rounded p-4 h-100">

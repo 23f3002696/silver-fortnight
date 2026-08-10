@@ -14,7 +14,6 @@ function setToken(token) {
 
 const api = axios.create({ baseURL: "/api" });
 
-// Attach the JWT (if we have one) to every outgoing request.
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
@@ -23,8 +22,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// If the token is missing/expired/revoked, the backend replies 401.
-// Clear it locally so the app doesn't keep sending a dead token.
 api.interceptors.response.use(
   (response) => response,
   (error) => {

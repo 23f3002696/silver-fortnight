@@ -45,7 +45,6 @@ async function logout() {
   try {
     await api.post("/auth/logout");
   } catch (err) {
-  //  console.error("Error logging out:", err); // Log error if needed
   }
   setToken(null);
   authState.user = null;

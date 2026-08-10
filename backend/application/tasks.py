@@ -1,6 +1,7 @@
 import csv
+import logging
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from celery import shared_task
 from flask import current_app
@@ -11,6 +12,8 @@ from .constants import BookingStatus, Role, TrekStatus
 from .database import db
 from .mail import send_email
 from .models import Booking, Trek, User
+
+logger = logging.getLogger(__name__)
 
 
 def _export_dir():
@@ -53,8 +56,14 @@ def send_trek_reminders(days_ahead=None):
                 location=trek.location or "TBA",
                 difficulty=trek.difficulty,
             )
-            send_email(user.email, subject=f"Reminder: {trek.name} starts soon", message=html)
-            reminders_sent += 1
+            try:
+                send_email(user.email, subject=f"Reminder: {trek.name} starts soon", message=html)
+                reminders_sent += 1
+            except Exception:
+                logger.exception(
+                    "Failed to send trek reminder to %s; continuing with remaining reminders.",
+                    user.email,
+                )
 
     return f"Sent {reminders_sent} trek reminder(s) for treks starting {target_date.isoformat()}."
 
@@ -116,7 +125,12 @@ def send_monthly_report():
     popular_rows = (
         db.session.query(Trek.name, func.count(Booking.id).label("cnt"))
         .join(Booking, Booking.trek_id == Trek.id)
-        .filter(Booking.status != BookingStatus.CANCELLED)
+        .filter(
+            Booking.status != BookingStatus.CANCELLED,
+            Trek.start_date.isnot(None),
+            Trek.start_date >= period_start,
+            Trek.start_date <= period_end,
+        )
         .group_by(Trek.id)
         .order_by(func.count(Booking.id).desc())
         .limit(5)
@@ -132,10 +146,18 @@ def send_monthly_report():
     )
 
     admins = User.query.filter_by(role=Role.ADMIN).all()
+    delivered = 0
     for admin in admins:
-        send_email(admin.email, subject="Monthly Trekking Activity Report", message=html)
+        try:
+            send_email(admin.email, subject="Monthly Trekking Activity Report", message=html)
+            delivered += 1
+        except Exception:
+            logger.exception(
+                "Failed to send monthly report to admin %s; continuing with remaining admins.",
+                admin.email,
+            )
 
-    return f"Monthly report sent to {len(admins)} admin(s)."
+    return f"Monthly report sent to {delivered} of {len(admins)} admin(s)."
 
 
 
@@ -154,7 +176,7 @@ def export_user_bookings_csv(user_id):
         .all()
     )
 
-    filename = f"booking_history_user{user_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.csv"
+    filename = f"booking_history_user{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.csv"
     filepath = os.path.join(_export_dir(), filename)
 
     with open(filepath, "w", newline="") as csv_file:
@@ -176,14 +198,17 @@ def export_user_bookings_csv(user_id):
                 ]
             )
 
-    send_email(
-        user.email,
-        subject="Your trekking history export is ready",
-        message=(
-            f"<p>Hi {user.username},</p>"
-            "<p>Your trekking history CSV export has finished processing and is "
-            "ready to download from the app.</p>"
-        ),
-    )
+    try:
+        send_email(
+            user.email,
+            subject="Your trekking history export is ready",
+            message=(
+                f"<p>Hi {user.username},</p>"
+                "<p>Your trekking history CSV export has finished processing and is "
+                "ready to download from the app.</p>"
+            ),
+        )
+    except Exception:
+        logger.exception("Failed to email export notification; file is still downloadable.")
 
     return {"filename": filename}

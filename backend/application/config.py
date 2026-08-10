@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../backend
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class config():
@@ -23,7 +23,7 @@ class config():
 class LocalDevelopmentConfig(config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///silver-fortnight.db"
-    JWT_SECRET_KEY = "super-secret"
+    JWT_SECRET_KEY = "super-secret-local-dev-key-not-for-production-000"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=6)
 
     EXPORT_DIR = os.path.join(BASE_DIR, "instance", "exports")

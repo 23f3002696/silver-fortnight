@@ -88,7 +88,6 @@ export default {
         const { data } = await api.get("/admin/staff");
         this.staffOptions = data.staff;
       } catch (err) {
-        // Non-fatal: the trek list itself can still work without the dropdown.
       }
     },
     onSearchInput() {
@@ -276,7 +275,6 @@ export default {
         </div>
       </div>
 
-      <!-- Create / Edit Trek Modal -->
       <div class="modal fade" tabindex="-1" ref="trekModalEl">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
@@ -383,7 +381,6 @@ export default {
         </div>
       </div>
 
-      <!-- Booking History Modal -->
       <div class="modal fade" tabindex="-1" ref="historyModalEl">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">

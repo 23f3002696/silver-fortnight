@@ -226,7 +226,6 @@ export default {
         </div>
       </div>
 
-      <!-- Update Slots / Status Modal -->
       <div class="modal fade" tabindex="-1" ref="editModalEl">
         <div class="modal-dialog">
           <div class="modal-content">
@@ -273,7 +272,6 @@ export default {
         </div>
       </div>
 
-      <!-- Participants Modal -->
       <div class="modal fade" tabindex="-1" ref="participantsModalEl">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">

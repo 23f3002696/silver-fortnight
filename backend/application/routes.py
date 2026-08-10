@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from flask import current_app as app, jsonify, request, abort, send_from_directory
 from sqlalchemy import or_
@@ -251,10 +251,18 @@ def _validate_trek_payload(data, partial=False):
         if staff_id in ("", None):
             fields["assigned_staff_id"] = None
         else:
-            staff = db.session.get(StaffProfile, staff_id)
-            if not staff:
-                errors["assigned_staff_id"] = "Selected staff member was not found."
-            fields["assigned_staff_id"] = staff_id
+            try:
+                staff_id = int(staff_id)
+            except (TypeError, ValueError):
+                staff_id = None
+                errors["assigned_staff_id"] = "Assigned staff must be a valid staff member."
+            if staff_id is not None:
+                staff = db.session.get(StaffProfile, staff_id)
+                if not staff:
+                    errors["assigned_staff_id"] = "Selected staff member was not found."
+                fields["assigned_staff_id"] = staff_id
+            else:
+                fields["assigned_staff_id"] = None
 
     return fields, errors
 
@@ -859,7 +867,7 @@ def _validate_payment_payload(data):
         errors["expiry"] = "Expiry must be in MM/YY format."
     else:
         exp_month, exp_year = int(match.group(1)), 2000 + int(match.group(2))
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if (exp_year, exp_month) < (now.year, now.month):
             errors["expiry"] = "This card has expired."
 
