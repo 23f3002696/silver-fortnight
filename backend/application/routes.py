@@ -561,7 +561,202 @@ def staff_cancel_participant(trek_id, booking_id):
     )
 
 
+def _serialize_user_booking(booking):
+    d = booking.to_dict()
+    trek = booking.trek
+    d["trek_name"] = trek.name
+    d["trek_location"] = trek.location
+    d["trek_difficulty"] = trek.difficulty
+    d["trek_status"] = trek.status
+    d["trek_duration_days"] = trek.duration_days
+    d["trek_start_date"] = trek.start_date.isoformat() if trek.start_date else None
+    d["trek_end_date"] = trek.end_date.isoformat() if trek.end_date else None
+    return d
+
+
+def _user_latest_booking_for_trek(trek_id):
+    return (
+        Booking.query.filter_by(user_id=current_user.id, trek_id=trek_id)
+        .order_by(Booking.booking_date.desc())
+        .first()
+    )
+
+
+def _serialize_user_trek(trek):
+    d = _serialize_trek(trek)
+    latest = _user_latest_booking_for_trek(trek.id)
+    if latest and latest.status != BookingStatus.CANCELLED:
+        d["user_booking_status"] = latest.status
+        d["user_booking_id"] = latest.id
+    else:
+        d["user_booking_status"] = None
+        d["user_booking_id"] = None
+    return d
+
+
 @app.route("/api/user/dashboard", methods=["GET"])
 @role_required(Role.USER)
 def user_dashboard():
-    return jsonify(message=f"Welcome, {current_user.username}. (Trekker dashboard data comes in a later milestone.)")
+    bookings = current_user.bookings
+    bookings_by_status = {status: 0 for status in BookingStatus.ALL}
+    for b in bookings:
+        bookings_by_status[b.status] = bookings_by_status.get(b.status, 0) + 1
+
+    available_treks = Trek.query.filter(
+        Trek.status == TrekStatus.OPEN, Trek.available_slots > 0
+    ).count()
+
+    upcoming = (
+        Booking.query.join(Trek, Booking.trek_id == Trek.id)
+        .filter(
+            Booking.user_id == current_user.id,
+            Booking.status == BookingStatus.BOOKED,
+            Trek.start_date.isnot(None),
+        )
+        .order_by(Trek.start_date.asc())
+        .first()
+    )
+
+    return jsonify(
+        available_treks=available_treks,
+        total_bookings=len(bookings),
+        bookings_by_status=bookings_by_status,
+        next_trek=_serialize_user_booking(upcoming) if upcoming else None,
+    )
+
+
+@app.route("/api/user/treks", methods=["GET"])
+@role_required(Role.USER)
+def user_list_treks():
+    query = Trek.query.filter(Trek.status.in_([TrekStatus.APPROVED, TrekStatus.OPEN]))
+
+    q = (request.args.get("q") or "").strip()
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(Trek.name.ilike(like), Trek.location.ilike(like)))
+
+    difficulty = (request.args.get("difficulty") or "").strip().lower()
+    if difficulty:
+        query = query.filter_by(difficulty=difficulty)
+
+    min_duration = request.args.get("min_duration", type=int)
+    if min_duration is not None:
+        query = query.filter(Trek.duration_days >= min_duration)
+
+    max_duration = request.args.get("max_duration", type=int)
+    if max_duration is not None:
+        query = query.filter(Trek.duration_days <= max_duration)
+
+    treks = query.order_by(Trek.created_at.desc()).all()
+    return jsonify(treks=[_serialize_user_trek(t) for t in treks])
+
+
+@app.route("/api/user/treks/<int:trek_id>/book", methods=["POST"])
+@role_required(Role.USER)
+def user_book_trek(trek_id):
+    trek = db.session.get(Trek, trek_id)
+    if not trek:
+        return jsonify(message="Trek not found."), 404
+
+    if trek.status != TrekStatus.OPEN:
+        return jsonify(message="This trek is not open for booking."), 400
+    if trek.available_slots <= 0:
+        return jsonify(message="No slots available for this trek."), 400
+
+    existing = Booking.query.filter_by(
+        user_id=current_user.id, trek_id=trek.id, status=BookingStatus.BOOKED
+    ).first()
+    if existing:
+        return jsonify(message="You already have an active booking for this trek."), 409
+
+    booking = Booking(user_id=current_user.id, trek_id=trek.id, status=BookingStatus.BOOKED)
+    trek.available_slots -= 1
+    db.session.add(booking)
+    db.session.commit()
+
+    return jsonify(
+        message="Trek booked successfully.",
+        booking=_serialize_user_booking(booking),
+        trek=_serialize_user_trek(trek),
+    ), 201
+
+
+@app.route("/api/user/bookings", methods=["GET"])
+@role_required(Role.USER)
+def user_list_bookings():
+    query = Booking.query.filter_by(user_id=current_user.id)
+
+    status = (request.args.get("status") or "").strip().lower()
+    if status:
+        query = query.filter(Booking.status == status)
+
+    bookings = query.order_by(Booking.booking_date.desc()).all()
+    return jsonify(bookings=[_serialize_user_booking(b) for b in bookings])
+
+
+@app.route("/api/user/bookings/<int:booking_id>/cancel", methods=["POST"])
+@role_required(Role.USER)
+def user_cancel_booking(booking_id):
+    booking = db.session.get(Booking, booking_id)
+    if not booking or booking.user_id != current_user.id:
+        return jsonify(message="Booking not found."), 404
+    if booking.status != BookingStatus.BOOKED:
+        return jsonify(message="Only active bookings can be cancelled."), 400
+
+    booking.status = BookingStatus.CANCELLED
+    booking.trek.available_slots += 1
+    db.session.commit()
+    return jsonify(message="Booking cancelled.", booking=_serialize_user_booking(booking))
+
+
+def _validate_profile_update_payload(data, user):
+    errors = {}
+    fields = {}
+
+    if "username" in data:
+        username = (data.get("username") or "").strip()
+        if not username or len(username) < 3:
+            errors["username"] = "Username is required and must be at least 3 characters."
+        elif User.query.filter(User.username == username, User.id != user.id).first():
+            errors["username"] = "That username is already taken."
+        else:
+            fields["username"] = username
+
+    if "email" in data:
+        email = (data.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            errors["email"] = "A valid email is required."
+        elif User.query.filter(User.email == email, User.id != user.id).first():
+            errors["email"] = "That email is already registered."
+        else:
+            fields["email"] = email
+
+    new_password = data.get("new_password") or ""
+    if new_password:
+        current_password = data.get("current_password") or ""
+        if not current_password or not user.check_password(current_password):
+            errors["current_password"] = "Current password is incorrect."
+        elif len(new_password) < 6:
+            errors["new_password"] = "New password must be at least 6 characters."
+        else:
+            fields["_new_password"] = new_password
+
+    return fields, errors
+
+
+@app.route("/api/user/profile", methods=["PUT"])
+@role_required(Role.USER)
+def user_update_profile():
+    data = request.get_json(silent=True) or {}
+    fields, errors = _validate_profile_update_payload(data, current_user)
+    if errors:
+        return jsonify(message="Validation failed.", errors=errors), 400
+
+    new_password = fields.pop("_new_password", None)
+    for key, value in fields.items():
+        setattr(current_user, key, value)
+    if new_password:
+        current_user.set_password(new_password)
+
+    db.session.commit()
+    return jsonify(message="Profile updated.", user=current_user.to_dict())

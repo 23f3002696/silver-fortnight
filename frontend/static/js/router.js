@@ -7,7 +7,11 @@ import AdminStaff from "./views/admin/AdminStaff.js";
 import AdminUsers from "./views/admin/AdminUsers.js";
 import AdminBookings from "./views/admin/AdminBookings.js";
 import StaffDashboardView from "./views/StaffDashboard.js";
-import UserDashboardView from "./views/UserDashboard.js";
+import UserLayout from "./views/user/UserLayout.js";
+import UserOverview from "./views/user/UserOverview.js";
+import UserTreks from "./views/user/UserTreks.js";
+import UserBookings from "./views/user/UserBookings.js";
+import UserProfile from "./views/user/UserProfile.js";
 import NotFoundView from "./views/NotFound.js";
 import { authState, fetchCurrentUser, dashboardPathForRole } from "./auth.js";
 
@@ -30,7 +34,17 @@ const routes = [
     ],
   },
   { path: "/staff", name: "staff", component: StaffDashboardView, meta: { role: "staff" } },
-  { path: "/user", name: "user", component: UserDashboardView, meta: { role: "user" } },
+  {
+    path: "/user",
+    component: UserLayout,
+    meta: { role: "user" },
+    children: [
+      { path: "", name: "user-overview", component: UserOverview },
+      { path: "treks", name: "user-treks", component: UserTreks },
+      { path: "bookings", name: "user-bookings", component: UserBookings },
+      { path: "profile", name: "user-profile", component: UserProfile },
+    ],
+  },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 

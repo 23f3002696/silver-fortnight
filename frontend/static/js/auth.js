@@ -2,15 +2,12 @@ import { api, getToken, setToken } from "./api.js";
 
 const { reactive } = Vue;
 
-// Single shared, reactive piece of state for the whole app -- simple
-// alternative to Pinia/Vuex that needs no build step.
 const authState = reactive({
-  user: null, // { id, username, email, role, is_active, created_at }
-  ready: false, // true once we've checked localStorage for an existing session
+  user: null,
+  ready: false,
 });
 
-// Called once, before the first route resolves, so refreshing the page
-// doesn't bounce a logged-in user back to /login.
+
 async function fetchCurrentUser() {
   const token = getToken();
   if (!token) {
@@ -48,11 +45,15 @@ async function logout() {
   try {
     await api.post("/auth/logout");
   } catch (err) {
-    // Even if this fails (e.g. token already expired), still clear
-    // things client-side below.
+  //  console.error("Error logging out:", err); // Log error if needed
   }
   setToken(null);
   authState.user = null;
+}
+
+
+function setCurrentUser(user) {
+  authState.user = user;
 }
 
 function dashboardPathForRole(role) {
@@ -68,4 +69,4 @@ function dashboardPathForRole(role) {
   }
 }
 
-export { authState, fetchCurrentUser, login, register, logout, dashboardPathForRole };
+export { authState, fetchCurrentUser, login, register, logout, setCurrentUser, dashboardPathForRole };

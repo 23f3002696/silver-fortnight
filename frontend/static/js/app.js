@@ -64,7 +64,16 @@ const App = {
               </template>
               <template v-else-if="authState.user && authState.user.role === 'user'">
                 <li class="nav-item">
-                  <router-link class="nav-link" to="/user" active-class="active">Dashboard</router-link>
+                  <router-link class="nav-link" to="/user" exact-active-class="active">Overview</router-link>
+                </li>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/user/treks" active-class="active">Browse Treks</router-link>
+                </li>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/user/bookings" active-class="active">My Bookings</router-link>
+                </li>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/user/profile" active-class="active">Profile</router-link>
                 </li>
               </template>
               <template v-else>
@@ -98,4 +107,3 @@ app.use(router);
 router.isReady().then(() => {
   app.mount("#app");
 });
-
