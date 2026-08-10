@@ -81,9 +81,6 @@ const App = {
               <button v-if="authState.user" class="btn btn-outline-danger fw-bold" @click="handleLogout">
                 <i class="bi bi-box-arrow-in-left"></i> Logout
               </button>
-              <router-link v-else class="btn btn-outline-success fw-bold" to="/login">
-                Login <i class="bi bi-box-arrow-in-right"></i>
-              </router-link>
             </div>
           </div>
         </div>
