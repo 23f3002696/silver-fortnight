@@ -68,6 +68,11 @@ pnpm-debug.log*
 dump.rdb
 appendonly.aof
 
+# Celery
+celerybeat-schedule*
+celerybeat.pid
+*.pid
+
 # IDEs
 .vscode/
 .idea/

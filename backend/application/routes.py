@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import current_app as app, jsonify, request, abort
+from flask import current_app as app, jsonify, request, abort, send_from_directory
 from sqlalchemy import or_
 from .models import User, Trek, StaffProfile, Booking
 from flask_jwt_extended import create_access_token, current_user, jwt_required, get_jwt
@@ -7,6 +7,8 @@ from functools import wraps
 from .database import db
 from .constants import BookingStatus, Role, StaffStatus, TrekDifficulty, TrekStatus
 from .security import jwt_blocklist
+from celery.result import AsyncResult
+from .tasks import export_user_bookings_csv, send_monthly_report
 
 def role_required(*roles):
     def wrapper(func):
@@ -438,6 +440,14 @@ def admin_list_bookings():
         result.append(d)
     return jsonify(bookings=result)
 
+
+@app.route("/api/admin/reports/monthly/run", methods=["POST"])
+@role_required(Role.ADMIN)
+def admin_trigger_monthly_report():
+    task = send_monthly_report.delay()
+    return jsonify(message="Monthly report job triggered. Admins will receive it by email.", task_id=task.id), 202
+
+
 STAFF_EDITABLE_STATUSES = (TrekStatus.OPEN, TrekStatus.CLOSED, TrekStatus.COMPLETED)
 
 
@@ -776,3 +786,43 @@ def user_update_profile():
 
     db.session.commit()
     return jsonify(message="Profile updated.", user=current_user.to_dict())
+
+
+@app.route("/api/user/bookings/export", methods=["POST"])
+@role_required(Role.USER)
+def user_export_bookings_csv():
+    """Kick off an async job that writes the current user's booking history
+    to a CSV file. The frontend should poll the status endpoint below with
+    the returned task_id, then hit the download endpoint once ready."""
+    task = export_user_bookings_csv.delay(current_user.id)
+    return jsonify(message="Export started. We'll email you when it's ready.", task_id=task.id), 202
+
+
+@app.route("/api/user/bookings/export/<task_id>", methods=["GET"])
+@role_required(Role.USER)
+def user_export_bookings_status(task_id):
+    result = AsyncResult(task_id)
+    if not result.ready():
+        return jsonify(status=result.status, ready=False)
+
+    payload = result.result
+    if isinstance(payload, dict) and payload.get("error"):
+        return jsonify(status="FAILURE", ready=True, message=payload["error"]), 400
+
+    filename = payload.get("filename") if isinstance(payload, dict) else None
+    return jsonify(status=result.status, ready=True, filename=filename)
+
+
+@app.route("/api/user/bookings/export/<task_id>/download", methods=["GET"])
+@role_required(Role.USER)
+def user_export_bookings_download(task_id):
+    result = AsyncResult(task_id)
+    if not result.ready() or not isinstance(result.result, dict):
+        return jsonify(message="Export is not ready yet."), 400
+
+    filename = result.result.get("filename")
+    # Only allow a user to download their own export file.
+    if not filename or f"user{current_user.id}_" not in filename:
+        return jsonify(message="Export not found."), 404
+
+    return send_from_directory(app.config["EXPORT_DIR"], filename, as_attachment=True)

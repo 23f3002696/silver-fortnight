@@ -16,6 +16,9 @@ export default {
       error: "",
       stats: null,
       statusColors: STATUS_COLORS,
+      runningReport: false,
+      reportMessage: "",
+      reportError: "",
     };
   },
   computed: {
@@ -45,10 +48,33 @@ export default {
         this.loading = false;
       }
     },
+    async runMonthlyReport() {
+      this.runningReport = true;
+      this.reportMessage = "";
+      this.reportError = "";
+      try {
+        const { data } = await api.post("/admin/reports/monthly/run");
+        this.reportMessage = data.message;
+      } catch (err) {
+        this.reportError = err.response?.data?.message || "Could not trigger the report.";
+      } finally {
+        this.runningReport = false;
+      }
+    },
   },
   template: `
     <div>
-      <h1 class="h4 mb-4">Admin Dashboard</h1>
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+        <h1 class="h4 mb-0">Admin Dashboard</h1>
+        <div class="text-end">
+          <button class="btn btn-sm btn-outline-secondary" :disabled="runningReport" @click="runMonthlyReport">
+            <span v-if="runningReport" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            {{ runningReport ? "Sending..." : "Email Monthly Report Now" }}
+          </button>
+          <div v-if="reportMessage" class="small text-success mt-1">{{ reportMessage }}</div>
+          <div v-if="reportError" class="small text-danger mt-1">{{ reportError }}</div>
+        </div>
+      </div>
 
       <div v-if="loading" class="text-muted">Loading...</div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>

@@ -20,6 +20,9 @@ export default {
       statusBadge: STATUS_BADGE,
       difficultyBadge: DIFFICULTY_BADGE,
       cancellingId: null,
+      exporting: false,
+      exportStatus: "", 
+      exportMessage: "",
     };
   },
   async created() {
@@ -60,10 +63,70 @@ export default {
         this.cancellingId = null;
       }
     },
+
+    async exportCsv() {
+      this.exporting = true;
+      this.exportStatus = "";
+      this.exportMessage = "";
+      try {
+        const { data } = await api.post("/user/bookings/export");
+        await this.pollExportStatus(data.task_id);
+      } catch (err) {
+        this.exporting = false;
+        this.exportStatus = "error";
+        this.exportMessage = err.response?.data?.message || "Could not start the export.";
+      }
+    },
+    async pollExportStatus(taskId) {
+      try {
+        const { data } = await api.get(`/user/bookings/export/${taskId}`);
+        if (!data.ready) {
+          setTimeout(() => this.pollExportStatus(taskId), 1500);
+          return;
+        }
+        if (data.status === "FAILURE" || !data.filename) {
+          this.exporting = false;
+          this.exportStatus = "error";
+          this.exportMessage = data.message || "The export failed. Please try again.";
+          return;
+        }
+        await this.downloadCsv(taskId);
+        this.exporting = false;
+        this.exportStatus = "ready";
+        this.exportMessage = "Download started \u2014 we also emailed you a confirmation.";
+      } catch (err) {
+        this.exporting = false;
+        this.exportStatus = "error";
+        this.exportMessage = "Could not check the export status.";
+      }
+    },
+    async downloadCsv(taskId) {
+      const response = await api.get(`/user/bookings/export/${taskId}/download`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "my-trekking-history.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
   },
   template: `
     <div>
-      <h1 class="h4 mb-3">My Bookings</h1>
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <h1 class="h4 mb-0">My Bookings</h1>
+        <div class="text-end">
+          <button class="btn btn-sm btn-outline-primary" :disabled="exporting" @click="exportCsv">
+            <span v-if="exporting" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            {{ exporting ? "Preparing export..." : "Export CSV" }}
+          </button>
+          <div v-if="exportStatus === 'ready'" class="small text-success mt-1">{{ exportMessage }}</div>
+          <div v-if="exportStatus === 'error'" class="small text-danger mt-1">{{ exportMessage }}</div>
+        </div>
+      </div>
 
       <div class="mb-3">
         <select v-model="statusFilter" @change="fetchBookings" class="form-select" style="max-width: 220px;">

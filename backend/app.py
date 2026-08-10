@@ -6,6 +6,8 @@ from application.security import jwt
 import click
 from application.constants import Role, StaffStatus
 from flask_cors import CORS
+from application.celery_init import celery_init_app
+from celery.schedules import crontab
 
 def create_app():
     app = Flask(
@@ -21,6 +23,24 @@ def create_app():
 app = create_app()
 
 app.app_context().push()
+
+celery = celery_init_app(app)
+
+
+@celery.on_after_finalize.connect
+def setup_periodic_tasks(sender, **kwargs):
+    from application.tasks import send_monthly_report, send_trek_reminders
+ 
+    sender.add_periodic_task(
+        crontab(hour=8, minute=0),
+        send_trek_reminders.s(),
+        name="daily-trek-reminders",
+    )
+    sender.add_periodic_task(
+        crontab(hour=0, minute=5, day_of_month=1),
+        send_monthly_report.s(),
+        name="monthly-admin-report",
+    )
 
 from application.routes import *
 
