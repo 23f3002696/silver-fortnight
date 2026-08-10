@@ -5,7 +5,7 @@ from .models import User, Trek, StaffProfile, Booking
 from flask_jwt_extended import create_access_token, current_user, jwt_required, get_jwt
 from functools import wraps
 from .database import db
-from .constants import Role, StaffStatus, TrekDifficulty, TrekStatus
+from .constants import BookingStatus, Role, StaffStatus, TrekDifficulty, TrekStatus
 from .security import jwt_blocklist
 
 def role_required(*roles):
@@ -102,6 +102,7 @@ def _serialize_trek(trek):
     else:
         d["assigned_staff_name"] = None
     d["bookings_count"] = len(trek.bookings)
+    d["active_bookings_count"] = sum(1 for b in trek.bookings if b.status != BookingStatus.CANCELLED)
     return d
 
 
@@ -111,6 +112,13 @@ def _serialize_staff(staff):
     d["email"] = staff.user.email
     d["is_active"] = staff.user.is_active
     d["assigned_treks_count"] = len(staff.assigned_treks)
+    return d
+
+
+def _serialize_participant(booking):
+    d = booking.to_dict()
+    d["username"] = booking.user.username
+    d["email"] = booking.user.email
     return d
 
 
@@ -414,13 +422,145 @@ def admin_list_bookings():
         result.append(d)
     return jsonify(bookings=result)
 
+STAFF_EDITABLE_STATUSES = (TrekStatus.OPEN, TrekStatus.CLOSED, TrekStatus.COMPLETED)
+
+
+def _current_staff_profile():
+    return current_user.staff_profile
+
+
+def _staff_owned_trek_or_error(trek_id):
+    staff = _current_staff_profile()
+    trek = db.session.get(Trek, trek_id)
+    if not trek:
+        return None, (jsonify(message="Trek not found."), 404)
+    if not staff or trek.assigned_staff_id != staff.id:
+        return None, (jsonify(message="You can only manage treks assigned to you."), 403)
+    return trek, None
+
+
+def _validate_staff_trek_payload(data):
+    errors = {}
+    fields = {}
+
+    if "available_slots" in data:
+        try:
+            slots = int(data.get("available_slots"))
+            if slots < 0:
+                raise ValueError
+            fields["available_slots"] = slots
+        except (TypeError, ValueError):
+            errors["available_slots"] = "Available slots must be zero or a positive number."
+
+    if "status" in data:
+        status = (data.get("status") or "").strip().lower()
+        if status not in STAFF_EDITABLE_STATUSES:
+            errors["status"] = f"Status must be one of: {', '.join(STAFF_EDITABLE_STATUSES)}."
+        else:
+            fields["status"] = status
+
+    if not fields and not errors:
+        errors["_general"] = "Nothing to update."
+
+    return fields, errors
+
 
 @app.route("/api/staff/dashboard", methods=["GET"])
 @role_required(Role.STAFF)
 def staff_dashboard():
-    return jsonify(message=f"Welcome, {current_user.username}. (Trek Staff dashboard data comes in a later milestone.)")
- 
- 
+    staff = _current_staff_profile()
+    if not staff:
+        return jsonify(message="No staff profile found for this account."), 404
+
+    treks = staff.assigned_treks
+    treks_by_status = {status: 0 for status in TrekStatus.ALL}
+    total_registered = 0
+    total_available_slots = 0
+    for trek in treks:
+        treks_by_status[trek.status] = treks_by_status.get(trek.status, 0) + 1
+        total_registered += sum(1 for b in trek.bookings if b.status != BookingStatus.CANCELLED)
+        total_available_slots += trek.available_slots
+
+    return jsonify(
+        assigned_treks=len(treks),
+        total_registered_trekkers=total_registered,
+        total_available_slots=total_available_slots,
+        treks_by_status=treks_by_status,
+    )
+
+
+@app.route("/api/staff/treks", methods=["GET"])
+@role_required(Role.STAFF)
+def staff_list_treks():
+    staff = _current_staff_profile()
+    if not staff:
+        return jsonify(message="No staff profile found for this account."), 404
+
+    treks = sorted(staff.assigned_treks, key=lambda t: t.created_at, reverse=True)
+    return jsonify(treks=[_serialize_trek(t) for t in treks])
+
+
+@app.route("/api/staff/treks/<int:trek_id>", methods=["PUT"])
+@role_required(Role.STAFF)
+def staff_update_trek(trek_id):
+    trek, error = _staff_owned_trek_or_error(trek_id)
+    if error:
+        return error
+
+    data = request.get_json(silent=True) or {}
+    fields, errors = _validate_staff_trek_payload(data)
+    if errors:
+        return jsonify(message="Validation failed.", errors=errors), 400
+
+    for key, value in fields.items():
+        setattr(trek, key, value)
+
+    if fields.get("status") == TrekStatus.COMPLETED:
+        for booking in trek.bookings:
+            if booking.status == BookingStatus.BOOKED:
+                booking.status = BookingStatus.COMPLETED
+
+    db.session.commit()
+    return jsonify(message="Trek updated.", trek=_serialize_trek(trek))
+
+
+@app.route("/api/staff/treks/<int:trek_id>/participants", methods=["GET"])
+@role_required(Role.STAFF)
+def staff_trek_participants(trek_id):
+    trek, error = _staff_owned_trek_or_error(trek_id)
+    if error:
+        return error
+
+    bookings = sorted(trek.bookings, key=lambda b: b.booking_date, reverse=True)
+    return jsonify(
+        trek=_serialize_trek(trek),
+        participants=[_serialize_participant(b) for b in bookings],
+    )
+
+
+@app.route("/api/staff/treks/<int:trek_id>/participants/<int:booking_id>/cancel", methods=["POST"])
+@role_required(Role.STAFF)
+def staff_cancel_participant(trek_id, booking_id):
+    trek, error = _staff_owned_trek_or_error(trek_id)
+    if error:
+        return error
+
+    booking = db.session.get(Booking, booking_id)
+    if not booking or booking.trek_id != trek.id:
+        return jsonify(message="Booking not found."), 404
+    if booking.status != BookingStatus.BOOKED:
+        return jsonify(message="Only active bookings can be cancelled."), 400
+
+    booking.status = BookingStatus.CANCELLED
+    trek.available_slots += 1
+    db.session.commit()
+    return jsonify(
+        message="Booking cancelled.",
+        trek=_serialize_trek(trek),
+        participant=_serialize_participant(booking),
+    )
+
+
 @app.route("/api/user/dashboard", methods=["GET"])
 @role_required(Role.USER)
 def user_dashboard():
