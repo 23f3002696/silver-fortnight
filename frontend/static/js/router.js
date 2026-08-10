@@ -1,11 +1,13 @@
 import LoginView from "./views/Login.js";
 import RegisterView from "./views/Register.js";
+import PublicLanding from "./views/PublicLanding.js";
 import AdminLayout from "./views/admin/AdminLayout.js";
 import AdminOverview from "./views/admin/AdminOverview.js";
 import AdminTreks from "./views/admin/AdminTreks.js";
 import AdminStaff from "./views/admin/AdminStaff.js";
 import AdminUsers from "./views/admin/AdminUsers.js";
 import AdminBookings from "./views/admin/AdminBookings.js";
+import AdminAnalytics from "./views/admin/AdminAnalytics.js";
 import StaffDashboardView from "./views/StaffDashboard.js";
 import UserLayout from "./views/user/UserLayout.js";
 import UserOverview from "./views/user/UserOverview.js";
@@ -18,7 +20,7 @@ import { authState, fetchCurrentUser, dashboardPathForRole } from "./auth.js";
 const { createRouter, createWebHashHistory } = VueRouter;
 
 const routes = [
-  { path: "/", redirect: "/login" },
+  { path: "/", name: "home", component: PublicLanding },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/register", name: "register", component: RegisterView, meta: { guestOnly: true } },
   {
@@ -31,6 +33,7 @@ const routes = [
       { path: "staff", name: "admin-staff", component: AdminStaff },
       { path: "users", name: "admin-users", component: AdminUsers },
       { path: "bookings", name: "admin-bookings", component: AdminBookings },
+      { path: "analytics", name: "admin-analytics", component: AdminAnalytics },
     ],
   },
   { path: "/staff", name: "staff", component: StaffDashboardView, meta: { role: "staff" } },

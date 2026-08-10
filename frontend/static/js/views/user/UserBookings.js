@@ -7,6 +7,13 @@ const STATUS_BADGE = {
   completed: "text-bg-success",
 };
 const DIFFICULTY_BADGE = { easy: "text-bg-success", moderate: "text-bg-warning", hard: "text-bg-danger" };
+const PAYMENT_BADGE = {
+  paid: "text-bg-success",
+  pending: "text-bg-warning",
+  failed: "text-bg-danger",
+  not_required: "text-bg-secondary",
+};
+const PAYABLE_STATUSES = ["pending", "failed"];
 
 export default {
   name: "UserBookings",
@@ -19,10 +26,21 @@ export default {
       statuses: STATUSES,
       statusBadge: STATUS_BADGE,
       difficultyBadge: DIFFICULTY_BADGE,
+      paymentBadge: PAYMENT_BADGE,
       cancellingId: null,
       exporting: false,
       exportStatus: "", 
       exportMessage: "",
+      payment: {
+        show: false,
+        booking: null,
+        cardName: "",
+        cardNumber: "",
+        expiry: "",
+        cvv: "",
+        errors: {},
+        paying: false,
+      },
     };
   },
   async created() {
@@ -123,6 +141,86 @@ export default {
       link.remove();
       window.URL.revokeObjectURL(url);
     },
+
+    canPay(booking) {
+      return booking.status === "booked" && PAYABLE_STATUSES.includes(booking.payment_status);
+    },
+    formatPaymentStatus(status) {
+      return (status || "").replace("_", " ");
+    },
+    openPayment(booking) {
+      this.payment = {
+        show: true,
+        booking,
+        cardName: "",
+        cardNumber: "",
+        expiry: "",
+        cvv: "",
+        errors: {},
+        paying: false,
+      };
+    },
+    closePayment() {
+      if (this.payment.paying) return;
+      this.payment.show = false;
+      this.payment.booking = null;
+    },
+    validatePayment() {
+      const errors = {};
+      const cardNumber = this.payment.cardNumber.replace(/[\s-]/g, "");
+      if (!/^\d{16}$/.test(cardNumber)) {
+        errors.card_number = "Card number must be exactly 16 digits.";
+      }
+      if (!this.payment.cardName.trim()) {
+        errors.card_name = "Name on card is required.";
+      }
+      const expiryMatch = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(this.payment.expiry.trim());
+      if (!expiryMatch) {
+        errors.expiry = "Expiry must be in MM/YY format.";
+      } else {
+        const now = new Date();
+        const expYear = 2000 + parseInt(expiryMatch[2], 10);
+        const expMonth = parseInt(expiryMatch[1], 10);
+        if (expYear < now.getFullYear() || (expYear === now.getFullYear() && expMonth < now.getMonth() + 1)) {
+          errors.expiry = "This card has expired.";
+        }
+      }
+      if (!/^\d{3,4}$/.test(this.payment.cvv.trim())) {
+        errors.cvv = "CVV must be 3 or 4 digits.";
+      }
+      this.payment.errors = errors;
+      return Object.keys(errors).length === 0;
+    },
+    async submitPayment() {
+      if (!this.validatePayment()) return;
+      this.payment.paying = true;
+      try {
+        const { data } = await api.post(`/user/bookings/${this.payment.booking.id}/pay`, {
+          card_name: this.payment.cardName.trim(),
+          card_number: this.payment.cardNumber,
+          expiry: this.payment.expiry.trim(),
+          cvv: this.payment.cvv.trim(),
+        });
+        this.payment.show = false;
+        this.payment.booking = null;
+        window.showToast(data.message, "success");
+        await this.fetchBookings();
+      } catch (err) {
+        const body = err.response?.data;
+        if (body?.booking) {
+          // Keep the row's payment badge in sync (e.g. declined -> failed).
+          const row = this.bookings.find((b) => b.id === body.booking.id);
+          if (row) row.payment_status = body.booking.payment_status;
+        }
+        if (body?.errors) {
+          this.payment.errors = body.errors;
+        } else {
+          window.showToast(body?.message || "Payment could not be processed.", "danger");
+        }
+      } finally {
+        this.payment.paying = false;
+      }
+    },
   },
   template: `
     <div>
@@ -174,21 +272,114 @@ export default {
                 <td class="small">{{ formatDay(booking.trek_start_date) }} &ndash; {{ formatDay(booking.trek_end_date) }}</td>
                 <td>{{ formatDate(booking.booking_date) }}</td>
                 <td><span class="badge" :class="statusBadge[booking.status]">{{ booking.status }}</span></td>
-                <td><span class="text-muted small text-capitalize">{{ booking.payment_status.replace('_', ' ') }}</span></td>
+                <td><span class="badge" :class="paymentBadge[booking.payment_status]">{{ formatPaymentStatus(booking.payment_status) }}</span></td>
                 <td class="text-center">
-                  <button
-                    v-if="booking.status === 'booked'"
-                    class="btn btn-sm btn-outline-danger"
-                    :disabled="cancellingId === booking.id"
-                    @click="cancelBooking(booking)"
-                  >
-                    {{ cancellingId === booking.id ? "Cancelling..." : "Cancel" }}
-                  </button>
+                  <template v-if="booking.status === 'booked'">
+                    <button
+                      v-if="canPay(booking)"
+                      class="btn btn-sm btn-success me-1"
+                      @click="openPayment(booking)"
+                    >
+                      <i class="bi bi-credit-card me-1"></i>Pay
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      :disabled="cancellingId === booking.id"
+                      @click="cancelBooking(booking)"
+                    >
+                      {{ cancellingId === booking.id ? "Cancelling..." : "Cancel" }}
+                    </button>
+                  </template>
                   <span v-else class="text-muted small">&mdash;</span>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ── Payment simulation modal ── -->
+      <div
+        v-if="payment.show"
+        class="modal d-block"
+        tabindex="-1"
+        style="background: rgba(0,0,0,.45);"
+        @keydown.esc="closePayment"
+      >
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+              <h5 class="modal-title">
+                <i class="bi bi-credit-card me-2 text-success"></i>Complete Payment
+              </h5>
+              <button type="button" class="btn-close" aria-label="Close" @click="closePayment"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted small mb-3">
+                Paying for <strong>{{ payment.booking?.trek_name }}</strong>.
+                This is a <strong>payment simulation</strong> &mdash; no real money is charged.
+                Use any 16-digit card number; a card ending in <code>0000</code> simulates a declined payment.
+              </p>
+
+              <form @submit.prevent="submitPayment">
+                <div class="mb-3">
+                  <label class="form-label">Name on Card</label>
+                  <input
+                    v-model.trim="payment.cardName"
+                    class="form-control"
+                    :class="{ 'is-invalid': payment.errors.card_name }"
+                    placeholder="As printed on the card"
+                  />
+                  <div v-if="payment.errors.card_name" class="invalid-feedback">{{ payment.errors.card_name }}</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Card Number</label>
+                  <input
+                    v-model.trim="payment.cardNumber"
+                    class="form-control"
+                    :class="{ 'is-invalid': payment.errors.card_number }"
+                    placeholder="1234 5678 9012 3456"
+                    inputmode="numeric"
+                    maxlength="19"
+                  />
+                  <div v-if="payment.errors.card_number" class="invalid-feedback">{{ payment.errors.card_number }}</div>
+                </div>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label class="form-label">Expiry (MM/YY)</label>
+                    <input
+                      v-model.trim="payment.expiry"
+                      class="form-control"
+                      :class="{ 'is-invalid': payment.errors.expiry }"
+                      placeholder="09/28"
+                      maxlength="5"
+                    />
+                    <div v-if="payment.errors.expiry" class="invalid-feedback">{{ payment.errors.expiry }}</div>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">CVV</label>
+                    <input
+                      v-model.trim="payment.cvv"
+                      type="password"
+                      class="form-control"
+                      :class="{ 'is-invalid': payment.errors.cvv }"
+                      placeholder="123"
+                      inputmode="numeric"
+                      maxlength="4"
+                    />
+                    <div v-if="payment.errors.cvv" class="invalid-feedback">{{ payment.errors.cvv }}</div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+              <button class="btn btn-outline-secondary" :disabled="payment.paying" @click="closePayment">Cancel</button>
+              <button class="btn btn-success" :disabled="payment.paying" @click="submitPayment">
+                <span v-if="payment.paying" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                {{ payment.paying ? "Processing..." : "Pay Now" }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

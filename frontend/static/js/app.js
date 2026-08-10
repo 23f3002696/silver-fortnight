@@ -100,6 +100,11 @@ const App = {
                     <i class="bi bi-journal-check me-1"></i>Bookings
                   </router-link>
                 </li>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/admin/analytics" active-class="active">
+                    <i class="bi bi-graph-up me-1"></i>Analytics
+                  </router-link>
+                </li>
               </template>
 
               <!-- Staff nav -->
@@ -137,6 +142,14 @@ const App = {
 
               <!-- Guest nav -->
               <template v-else>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/" exact-active-class="active">
+                    <i class="bi bi-graph-up me-1"></i>Live Stats
+                  </router-link>
+                </li>
+                <li class="nav-item">
+                  <router-link class="nav-link" to="/login" active-class="active">Login</router-link>
+                </li>
                 <li class="nav-item">
                   <router-link class="nav-link" to="/register" active-class="active">Register</router-link>
                 </li>

@@ -6,7 +6,7 @@ from .models import User, Trek, StaffProfile, Booking
 from flask_jwt_extended import create_access_token, current_user, jwt_required, get_jwt
 from functools import wraps
 from .database import db
-from .constants import BookingStatus, Role, StaffStatus, TrekDifficulty, TrekStatus
+from .constants import BookingStatus, PaymentStatus, Role, StaffStatus, TrekDifficulty, TrekStatus
 from .security import jwt_blocklist
 from celery.result import AsyncResult
 from .tasks import export_user_bookings_csv, send_monthly_report
@@ -14,15 +14,19 @@ from .mail import send_email
 from .cache import (
     _serialize_staff,
     _serialize_trek,
+    build_admin_analytics_payload,
     build_admin_dashboard_payload,
     build_admin_staff_payload,
     build_admin_treks_payload,
     build_admin_users_payload,
+    build_public_stats_payload,
     build_public_treks_payload,
+    cached_admin_analytics,
     cached_admin_dashboard,
     cached_admin_staff,
     cached_admin_treks,
     cached_admin_users,
+    cached_public_stats,
     cached_public_treks,
     invalidate_staff_caches,
     invalidate_trek_caches,
@@ -160,6 +164,18 @@ def me():
     return jsonify(user=current_user.to_dict())
 
 
+@app.route("/api/public/stats", methods=["GET"])
+def public_stats():
+    """Read-only trekking statistics for the public landing dashboard.
+    No authentication required; only aggregates are exposed."""
+    try:
+        payload = cached_public_stats()
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh public stats.")
+        payload = build_public_stats_payload()
+    return jsonify(**payload)
+
+
 def _serialize_participant(booking):
     d = booking.to_dict()
     d["username"] = booking.user.username
@@ -251,6 +267,17 @@ def admin_dashboard():
     except Exception:
         app.logger.exception("Cache read failed; serving fresh admin dashboard stats.")
         payload = build_admin_dashboard_payload()
+    return jsonify(**payload)
+
+
+@app.route("/api/admin/analytics", methods=["GET"])
+@role_required(Role.ADMIN)
+def admin_analytics():
+    try:
+        payload = cached_admin_analytics()
+    except Exception:
+        app.logger.exception("Cache read failed; serving fresh admin analytics.")
+        payload = build_admin_analytics_payload()
     return jsonify(**payload)
 
 
@@ -742,7 +769,12 @@ def user_book_trek(trek_id):
     if existing:
         return jsonify(message="You already have an active booking for this trek."), 409
 
-    booking = Booking(user_id=current_user.id, trek_id=trek.id, status=BookingStatus.BOOKED)
+    booking = Booking(
+        user_id=current_user.id,
+        trek_id=trek.id,
+        status=BookingStatus.BOOKED,
+        payment_status=PaymentStatus.PENDING,
+    )
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
@@ -787,6 +819,98 @@ def user_cancel_booking(booking_id):
     _send_cancellation_notification(current_user, booking.trek, cancelled_by="user")
 
     return jsonify(message="Booking cancelled.", booking=_serialize_user_booking(booking))
+
+
+def _simulate_payment_amount(trek):
+    """Simulated trek fee: ₹500 per trek day."""
+    return trek.duration_days * 500
+
+
+def _send_payment_receipt(user, trek, amount):
+    html = (
+        f"<h3>Hi {user.username},</h3>"
+        f"<p>We received your payment of <strong>₹{amount}</strong> for "
+        f"<strong>{trek.name}</strong>.</p>"
+        "<p>This was a simulated transaction &mdash; no real money was charged.</p>"
+        "<p>See you on the trail! &mdash; Silver Fortnight Trekking Team</p>"
+    )
+    try:
+        send_email(user.email, subject=f"Payment Received: {trek.name}", message=html)
+    except Exception:
+        app.logger.exception("Failed to send payment receipt email; payment still recorded.")
+
+
+_EXPIRY_RE = re.compile(r"^(0[1-9]|1[0-2])/(\d{2})$")
+
+
+def _validate_payment_payload(data):
+    errors = {}
+
+    card_number = re.sub(r"[\s-]", "", str(data.get("card_number") or ""))
+    if not card_number.isdigit() or len(card_number) != 16:
+        errors["card_number"] = "Card number must be exactly 16 digits."
+
+    if not (data.get("card_name") or "").strip():
+        errors["card_name"] = "Name on card is required."
+
+    expiry = (data.get("expiry") or "").strip()
+    match = _EXPIRY_RE.match(expiry)
+    if not match:
+        errors["expiry"] = "Expiry must be in MM/YY format."
+    else:
+        exp_month, exp_year = int(match.group(1)), 2000 + int(match.group(2))
+        now = datetime.utcnow()
+        if (exp_year, exp_month) < (now.year, now.month):
+            errors["expiry"] = "This card has expired."
+
+    cvv = str(data.get("cvv") or "").strip()
+    if not cvv.isdigit() or len(cvv) not in (3, 4):
+        errors["cvv"] = "CVV must be 3 or 4 digits."
+
+    return card_number, errors
+
+
+@app.route("/api/user/bookings/<int:booking_id>/pay", methods=["POST"])
+@role_required(Role.USER)
+def user_pay_booking(booking_id):
+    """Optional payment simulation: validates card details, then simulates a
+    payment gateway. Card numbers ending in 0000 are declined; everything
+    else succeeds. No real charge is ever made."""
+    booking = db.session.get(Booking, booking_id)
+    if not booking or booking.user_id != current_user.id:
+        return jsonify(message="Booking not found."), 404
+    if booking.status != BookingStatus.BOOKED:
+        return jsonify(message="Only active bookings can be paid."), 400
+    if booking.payment_status == PaymentStatus.PAID:
+        return jsonify(message="This booking has already been paid."), 400
+
+    data = request.get_json(silent=True) or {}
+    card_number, errors = _validate_payment_payload(data)
+    if errors:
+        return jsonify(message="Validation failed.", errors=errors), 400
+
+    trek = booking.trek
+    amount = _simulate_payment_amount(trek)
+
+    if card_number.endswith("0000"):
+        booking.payment_status = PaymentStatus.FAILED
+        db.session.commit()
+        return jsonify(
+            message="Payment was declined by the (simulated) gateway. Please try another card.",
+            booking=_serialize_user_booking(booking),
+        ), 402
+
+    booking.payment_status = PaymentStatus.PAID
+    db.session.commit()
+    invalidate_trek_caches()
+
+    _send_payment_receipt(current_user, trek, amount)
+
+    return jsonify(
+        message="Payment successful. Your booking is confirmed.",
+        amount=amount,
+        booking=_serialize_user_booking(booking),
+    )
 
 
 def _validate_profile_update_payload(data, user):

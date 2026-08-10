@@ -18,6 +18,7 @@ class config():
     CACHE_TTL_TREK_LISTING = 60
     CACHE_TTL_ADMIN_STATS = 60
     CACHE_TTL_ADMIN_LISTS = 60
+    CACHE_TTL_ANALYTICS = 120
 
 class LocalDevelopmentConfig(config):
     DEBUG = True

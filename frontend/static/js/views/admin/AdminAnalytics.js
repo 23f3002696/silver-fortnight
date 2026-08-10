@@ -1,0 +1,289 @@
+import { api } from "../../api.js";
+import {
+  CHART_COLORS,
+  DIFFICULTY_COLORS,
+  BOOKING_STATUS_COLORS,
+  renderChart,
+  destroyChart,
+  formatMonthLabel,
+} from "../../charts.js";
+
+export default {
+  name: "AdminAnalytics",
+  data() {
+    return {
+      loading: true,
+      error: "",
+      stats: null,
+      charts: [],
+    };
+  },
+  async created() {
+    await this.fetchStats();
+  },
+  beforeUnmount() {
+    this.charts.forEach(destroyChart);
+    this.charts = [];
+  },
+  methods: {
+    async fetchStats() {
+      this.loading = true;
+      this.error = "";
+      try {
+        const { data } = await api.get("/admin/analytics");
+        this.stats = data;
+      } catch (err) {
+        this.error = err.response?.data?.message || "Could not load the analytics.";
+      } finally {
+        this.loading = false;
+      }
+      // Schedule chart rendering only after loading is false, so the
+      // re-render that mounts the canvases happens before we read $refs.
+      if (this.stats && !this.error) {
+        this.$nextTick(() => this.renderCharts());
+      }
+    },
+    renderCharts() {
+      if (!this.stats) return;
+      this.charts.forEach(destroyChart);
+      this.charts = [];
+
+      // Monthly booking trend + participation (line, last 12 months)
+      const trend = this.stats.monthly_trend || { labels: [], bookings: [], participants: [] };
+      this.charts.push(
+        renderChart(this.$refs.trendCanvas, {
+          type: "line",
+          data: {
+            labels: trend.labels.map(formatMonthLabel),
+            datasets: [
+              {
+                label: "Bookings",
+                data: trend.bookings,
+                borderColor: CHART_COLORS.blue,
+                backgroundColor: "rgba(144,202,249,.25)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+              {
+                label: "Participants",
+                data: trend.participants,
+                borderColor: CHART_COLORS.green,
+                backgroundColor: "rgba(165,214,167,.25)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
+              x: { grid: { display: false } },
+            },
+          },
+        })
+      );
+
+      // Booking status breakdown (doughnut)
+      const byStatus = this.stats.bookings_by_status || {};
+      this.charts.push(
+        renderChart(this.$refs.statusCanvas, {
+          type: "doughnut",
+          data: {
+            labels: Object.keys(byStatus),
+            datasets: [
+              {
+                data: Object.values(byStatus),
+                backgroundColor: Object.keys(byStatus).map(
+                  (s) => BOOKING_STATUS_COLORS[s] || CHART_COLORS.purple
+                ),
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "62%",
+            plugins: { legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
+          },
+        })
+      );
+
+      // Most popular treks (horizontal bar)
+      const popular = this.stats.popular_treks || [];
+      this.charts.push(
+        renderChart(this.$refs.popularCanvas, {
+          type: "bar",
+          data: {
+            labels: popular.map((t) => t.name),
+            datasets: [
+              {
+                label: "Bookings",
+                data: popular.map((t) => t.bookings),
+                backgroundColor: CHART_COLORS.green,
+                borderRadius: 6,
+                maxBarThickness: 26,
+              },
+            ],
+          },
+          options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(0,0,0,.05)" } },
+              y: { grid: { display: false } },
+            },
+          },
+        })
+      );
+
+      // Participation by difficulty (doughnut)
+      const difficulty = this.stats.participation_by_difficulty || {};
+      const labels = Object.keys(difficulty);
+      this.charts.push(
+        renderChart(this.$refs.difficultyCanvas, {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [
+              {
+                data: Object.values(difficulty),
+                backgroundColor: labels.map((l) => DIFFICULTY_COLORS[l] || CHART_COLORS.purple),
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "62%",
+            plugins: { legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
+          },
+        })
+      );
+    },
+  },
+  template: `
+    <div>
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+        <div>
+          <h1 class="h4 mb-0">Reports &amp; Analytics</h1>
+          <p class="text-muted small mb-0">Trekking statistics, booking trends and monthly participation.</p>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" :disabled="loading" @click="fetchStats">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </div>
+
+      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
+
+      <div v-else>
+        <!-- Headline numbers -->
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="fs-2 fw-bold" style="color:#F48FB1;">{{ stats.total_bookings }}</div>
+              <div class="text-muted small">Total Bookings</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="fs-2 fw-bold" style="color:#B39DDB;">{{ stats.completed_treks }}</div>
+              <div class="text-muted small">Treks Completed</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="fs-2 fw-bold" style="color:#A5D6A7;">{{ stats.total_participants }}</div>
+              <div class="text-muted small">Unique Participants</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="fs-2 fw-bold" style="color:#90CAF9;">{{ stats.bookings_by_status.booked || 0 }}</div>
+              <div class="text-muted small">Active Bookings</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly trend + booking status -->
+        <div class="row g-3 mt-1">
+          <div class="col-lg-8">
+            <div class="border rounded p-4 h-100 bg-white">
+              <h6 class="fw-semibold mb-1">Monthly Booking &amp; Participation Trend</h6>
+              <p class="text-muted small mb-3">Last 12 months &mdash; bookings made and unique participants per month.</p>
+              <div style="height: 280px;"><canvas ref="trendCanvas"></canvas></div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="border rounded p-4 h-100 bg-white">
+              <h6 class="fw-semibold mb-1">Bookings by Status</h6>
+              <p class="text-muted small mb-3">All-time booking outcomes.</p>
+              <div style="height: 280px;"><canvas ref="statusCanvas"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Popular treks + top participants -->
+        <div class="row g-3 mt-1">
+          <div class="col-lg-7">
+            <div class="border rounded p-4 h-100 bg-white">
+              <h6 class="fw-semibold mb-1">Most Popular Treks</h6>
+              <p class="text-muted small mb-3">Top 5 treks ranked by non-cancelled bookings.</p>
+              <div v-if="stats.popular_treks.length === 0" class="text-secondary small">
+                No bookings recorded yet.
+              </div>
+              <div v-else :style="{ height: Math.max(180, stats.popular_treks.length * 44) + 'px' }">
+                <canvas ref="popularCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="border rounded p-4 h-100 bg-white">
+              <h6 class="fw-semibold mb-1">Top Participants</h6>
+              <p class="text-muted small mb-3">Trekkers with the most non-cancelled bookings.</p>
+              <div v-if="stats.top_participants.length === 0" class="text-secondary small">
+                No participant activity yet.
+              </div>
+              <table v-else class="table table-sm table-borderless align-middle mb-0">
+                <thead class="border-bottom">
+                  <tr>
+                    <th class="text-muted small fw-semibold">#</th>
+                    <th class="text-muted small fw-semibold">Trekker</th>
+                    <th class="text-muted small fw-semibold text-end">Bookings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in stats.top_participants" :key="row.username">
+                    <td class="text-muted">{{ index + 1 }}</td>
+                    <td class="fw-medium">{{ row.username }}</td>
+                    <td class="text-end">{{ row.bookings }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Difficulty mix -->
+        <div class="row g-3 mt-1">
+          <div class="col-lg-4">
+            <div class="border rounded p-4 bg-white">
+              <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
+              <p class="text-muted small mb-3">Non-cancelled bookings grouped by trek difficulty.</p>
+              <div style="height: 240px;"><canvas ref="difficultyCanvas"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+};
