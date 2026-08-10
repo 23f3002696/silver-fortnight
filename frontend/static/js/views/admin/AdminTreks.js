@@ -188,35 +188,41 @@ export default {
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h4 mb-0">Treks</h1>
         <button class="btn btn-primary btn-sm" @click="openCreateModal">
-          <i class="bi bi-plus-lg"></i> New Trek
+          <i class="bi bi-plus-lg me-1"></i>New Trek
         </button>
       </div>
 
-      <div class="row g-2 mb-3">
+      <div class="toolbar row g-2 mb-3">
         <div class="col-12 col-md-6">
-          <input
-            v-model="searchQuery"
-            @input="onSearchInput"
-            type="search"
-            class="form-control"
-            placeholder="Search by name or location..."
-          />
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              v-model="searchQuery"
+              @input="onSearchInput"
+              type="search"
+              class="form-control"
+              placeholder="Search by name or location..."
+            />
+          </div>
         </div>
         <div class="col-6 col-md-3">
           <select v-model="statusFilter" @change="fetchTreks" class="form-select">
             <option value="">All statuses</option>
-            <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in statuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
           </select>
         </div>
         <div class="col-6 col-md-3">
           <select v-model="difficultyFilter" @change="fetchTreks" class="form-select">
             <option value="">All difficulties</option>
-            <option v-for="d in difficulties" :key="d" :value="d">{{ d }}</option>
+            <option v-for="d in difficulties" :key="d" :value="d">{{ d.charAt(0).toUpperCase() + d.slice(1) }}</option>
           </select>
         </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading treks&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
@@ -226,7 +232,7 @@ export default {
           <table class="table table-borderless mb-0 align-middle">
             <thead class="border-bottom">
               <tr>
-                <th>Name</th>
+                <th>Trek</th>
                 <th>Difficulty</th>
                 <th>Duration</th>
                 <th>Slots</th>
@@ -239,13 +245,15 @@ export default {
             <tbody>
               <tr v-for="trek in treks" :key="trek.id">
                 <td>
-                  <div class="fw-medium">{{ trek.name }}</div>
-                  <div class="small text-muted" v-if="trek.location">{{ trek.location }}</div>
+                  <div class="fw-semibold">{{ trek.name }}</div>
+                  <div class="small text-muted" v-if="trek.location">
+                    <i class="bi bi-geo-alt me-1"></i>{{ trek.location }}
+                  </div>
                 </td>
-                <td><span class="badge" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
-                <td>{{ trek.duration_days }}d</td>
+                <td><span class="badge text-capitalize" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
+                <td>{{ trek.duration_days }} {{ trek.duration_days === 1 ? 'day' : 'days' }}</td>
                 <td>{{ trek.available_slots }}</td>
-                <td><span class="badge" :class="statusBadge[trek.status]">{{ trek.status }}</span></td>
+                <td><span class="badge text-capitalize" :class="statusBadge[trek.status]">{{ trek.status }}</span></td>
                 <td>
                   <span v-if="trek.assigned_staff_name">{{ trek.assigned_staff_name }}</span>
                   <span v-else class="text-muted small">Unassigned</span>
@@ -294,7 +302,7 @@ export default {
                   <div class="col-md-4">
                     <label class="form-label">Difficulty</label>
                     <select v-model="form.difficulty" class="form-select" :class="{ 'is-invalid': formErrors.difficulty }">
-                      <option v-for="d in difficulties" :key="d" :value="d">{{ d }}</option>
+                      <option v-for="d in difficulties" :key="d" :value="d">{{ d.charAt(0).toUpperCase() + d.slice(1) }}</option>
                     </select>
                     <div class="invalid-feedback">{{ formErrors.difficulty }}</div>
                   </div>
@@ -326,7 +334,7 @@ export default {
                   <div class="col-md-4">
                     <label class="form-label">Status</label>
                     <select v-model="form.status" class="form-select" :class="{ 'is-invalid': formErrors.status }">
-                      <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                      <option v-for="s in statuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
                     </select>
                     <div class="invalid-feedback">{{ formErrors.status }}</div>
                   </div>
@@ -387,7 +395,10 @@ export default {
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div v-if="historyLoading" class="text-muted">Loading...</div>
+              <div v-if="historyLoading" class="loading-box">
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                Loading history&hellip;
+              </div>
               <div v-else-if="historyError" class="alert alert-danger">{{ historyError }}</div>
               <div v-else-if="historyBookings.length === 0" class="text-secondary text-center p-3">
                 No trekkers have ever booked this trek.
@@ -405,12 +416,12 @@ export default {
                   <tbody>
                     <tr v-for="b in historyBookings" :key="b.id">
                       <td>
-                        <div class="fw-medium">{{ b.username }}</div>
+                        <div class="fw-semibold">{{ b.username }}</div>
                         <div class="small text-muted">{{ b.email }}</div>
                       </td>
-                      <td>{{ formatDate(b.booking_date) }}</td>
-                      <td><span class="badge" :class="bookingStatusBadge[b.status]">{{ b.status }}</span></td>
-                      <td><span class="text-muted small text-capitalize">{{ b.payment_status.replace('_', ' ') }}</span></td>
+                      <td class="small">{{ formatDate(b.booking_date) }}</td>
+                      <td><span class="badge text-capitalize" :class="bookingStatusBadge[b.status]">{{ b.status }}</span></td>
+                      <td><span class="text-muted small text-capitalize">{{ b.payment_status.replace(/_/g, ' ') }}</span></td>
                     </tr>
                   </tbody>
                 </table>

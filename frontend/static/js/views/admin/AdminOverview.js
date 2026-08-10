@@ -69,51 +69,59 @@ export default {
         <div class="text-end">
           <button class="btn btn-sm btn-outline-secondary" :disabled="runningReport" @click="runMonthlyReport">
             <span v-if="runningReport" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            {{ runningReport ? "Sending..." : "Email Monthly Report Now" }}
+            <i v-else class="bi bi-envelope me-1"></i>
+            {{ runningReport ? "Sending..." : "Send Monthly Report" }}
           </button>
           <div v-if="reportMessage" class="small text-success mt-1">{{ reportMessage }}</div>
           <div v-if="reportError" class="small text-danger mt-1">{{ reportError }}</div>
         </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading the dashboard&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-else>
         <div class="row g-3">
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#90CAF9;">{{ stats.total_treks }}</div>
-              <div class="text-muted small">Treks</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-blue mb-2"><i class="bi bi-map"></i></span>
+              <div class="stat-value">{{ stats.total_treks }}</div>
+              <div class="stat-label">Treks</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#A5D6A7;">{{ stats.total_users }}</div>
-              <div class="text-muted small">Trekkers</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-green mb-2"><i class="bi bi-people"></i></span>
+              <div class="stat-value">{{ stats.total_users }}</div>
+              <div class="stat-label">Trekkers</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#FFCC80;">{{ stats.total_staff }}</div>
-              <div class="text-muted small">Trek Staff</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-orange mb-2"><i class="bi bi-person-badge"></i></span>
+              <div class="stat-value">{{ stats.total_staff }}</div>
+              <div class="stat-label">Trek Staff</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#F48FB1;">{{ stats.total_bookings }}</div>
-              <div class="text-muted small">Bookings</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-pink mb-2"><i class="bi bi-journal-check"></i></span>
+              <div class="stat-value">{{ stats.total_bookings }}</div>
+              <div class="stat-label">Bookings</div>
             </div>
           </div>
         </div>
 
         <div class="border rounded p-4 mt-4">
-          <h6 class="fw-semibold mb-3">Trek Status Breakdown</h6>
+          <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2 text-primary"></i>Trek Status Breakdown</h6>
           <div v-if="stats.total_treks === 0" class="text-secondary small">No treks created yet.</div>
           <div v-else>
             <div v-for="row in statusBreakdown" :key="row.status" class="mb-3">
               <div class="d-flex justify-content-between small mb-1">
-                <span class="text-capitalize">{{ row.status }}</span>
+                <span class="text-capitalize fw-medium">{{ row.status }}</span>
                 <span class="text-muted">{{ row.count }} ({{ row.pct }}%)</span>
               </div>
               <div class="progress" style="height: 8px;">

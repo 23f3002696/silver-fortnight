@@ -91,43 +91,53 @@ export default {
     <div>
       <h1 class="h4 mb-3">Trekkers</h1>
 
-      <div class="mb-3">
-        <input
-          v-model="searchQuery"
-          @input="onSearchInput"
-          type="search"
-          class="form-control"
-          placeholder="Search by username or email..."
-        />
+      <div class="toolbar mb-3">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            type="search"
+            class="form-control"
+            placeholder="Search by username or email..."
+          />
+        </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading trekkers&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-else class="border rounded mb-1">
-        <div v-if="users.length === 0" class="p-4 text-secondary text-center">No Trekkers found.</div>
+      <div v-else class="border rounded">
+        <div v-if="users.length === 0" class="p-4 text-secondary text-center">No trekkers found.</div>
         <div
           v-for="user in users"
           :key="user.id"
-          class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 p-3 border-bottom"
+          class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 p-3 border-bottom"
         >
-          <div>
-            <span class="fw-medium" :class="{ 'text-danger text-decoration-line-through': !user.is_active }">
-              {{ user.username }}
-            </span>
-            <span v-if="!user.is_active" class="badge bg-danger ms-1">Blacklisted</span>
-            <div class="mt-1">
-              <small class="text-muted">{{ user.email }} &middot; {{ user.bookings_count }} booking(s)</small>
+          <div class="d-flex align-items-center gap-3">
+            <span class="avatar">{{ user.username.charAt(0).toUpperCase() }}</span>
+            <div>
+              <span class="fw-semibold" :class="{ 'text-danger text-decoration-line-through': !user.is_active }">
+                {{ user.username }}
+              </span>
+              <span v-if="!user.is_active" class="badge text-bg-danger ms-1">Blacklisted</span>
+              <div class="small text-muted mt-1">
+                {{ user.email }} &middot; {{ user.bookings_count }} {{ user.bookings_count === 1 ? 'booking' : 'bookings' }}
+              </div>
             </div>
           </div>
-          <div class="d-flex gap-2 align-items-center flex-shrink-0">
+          <div class="d-flex gap-2 align-items-center flex-shrink-0 ms-auto">
             <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" @click="openHistory(user)">
-              <i class="bi bi-clock-history"></i> History
+              <i class="bi bi-clock-history me-1"></i>History
             </button>
             <button
               class="btn btn-sm rounded-pill px-3"
               :class="user.is_active ? 'btn-outline-danger' : 'btn-outline-success'"
               @click="toggleActive(user)"
             >
+              <i class="bi" :class="user.is_active ? 'bi-person-x' : 'bi-person-check'" style="margin-right:0.3rem;"></i>
               {{ user.is_active ? "Blacklist" : "Reactivate" }}
             </button>
           </div>
@@ -146,7 +156,10 @@ export default {
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div v-if="historyLoading" class="text-muted">Loading...</div>
+              <div v-if="historyLoading" class="loading-box">
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                Loading history&hellip;
+              </div>
               <div v-else-if="historyError" class="alert alert-danger">{{ historyError }}</div>
               <div v-else-if="historyBookings.length === 0" class="text-secondary text-center p-3">
                 This trekker has no bookings yet.
@@ -164,12 +177,14 @@ export default {
                   <tbody>
                     <tr v-for="b in historyBookings" :key="b.id">
                       <td>
-                        <div class="fw-medium">{{ b.trek_name }}</div>
-                        <div class="small text-muted" v-if="b.trek_location">{{ b.trek_location }}</div>
+                        <div class="fw-semibold">{{ b.trek_name }}</div>
+                        <div class="small text-muted" v-if="b.trek_location">
+                          <i class="bi bi-geo-alt me-1"></i>{{ b.trek_location }}
+                        </div>
                       </td>
-                      <td>{{ formatDate(b.booking_date) }}</td>
-                      <td><span class="badge" :class="bookingStatusBadge[b.status]">{{ b.status }}</span></td>
-                      <td><span class="text-muted small text-capitalize">{{ b.payment_status.replace('_', ' ') }}</span></td>
+                      <td class="small">{{ formatDate(b.booking_date) }}</td>
+                      <td><span class="badge text-capitalize" :class="bookingStatusBadge[b.status]">{{ b.status }}</span></td>
+                      <td><span class="text-muted small text-capitalize">{{ b.payment_status.replace(/_/g, ' ') }}</span></td>
                     </tr>
                   </tbody>
                 </table>

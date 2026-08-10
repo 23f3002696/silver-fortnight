@@ -49,13 +49,14 @@ const App = {
     },
   },
   template: `
-    <div class="min-vh-100 bg-light">
+    <div class="min-vh-100">
 
       <!-- ── Navbar ── -->
-      <nav class="navbar navbar-expand-lg bg-white border-bottom mb-4 shadow-sm">
+      <nav class="navbar navbar-expand-lg sticky-top border-bottom shadow-sm">
         <div class="container">
-          <router-link class="navbar-brand fw-bold text-primary" to="/">
-            <i class="bi bi-compass me-1"></i>Silver Fortnight
+          <router-link class="navbar-brand d-flex align-items-center gap-2" to="/">
+            <span class="brand-icon"><i class="bi bi-compass"></i></span>
+            <span class="fw-bold">Silver Fortnight</span>
           </router-link>
 
           <button
@@ -157,11 +158,13 @@ const App = {
             </ul>
 
             <!-- User info + logout -->
-            <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mt-2 mt-lg-0 ms-lg-auto">
-              <span v-if="authState.user" class="small text-muted d-flex align-items-center gap-1">
-                <i class="bi bi-person-circle"></i>
-                <span class="fw-medium text-body">{{ authState.user.username }}</span>
-                <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill ms-1 text-capitalize">
+            <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mt-3 mt-lg-0 ms-lg-3">
+              <span v-if="authState.user" class="small text-muted d-flex align-items-center gap-2">
+                <span class="avatar" style="width:1.9rem;height:1.9rem;font-size:0.8rem;">
+                  {{ authState.user.username.charAt(0).toUpperCase() }}
+                </span>
+                <span class="fw-semibold text-body">{{ authState.user.username }}</span>
+                <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill text-capitalize">
                   {{ authState.user.role }}
                 </span>
               </span>
@@ -174,9 +177,9 @@ const App = {
       </nav>
 
       <!-- ── Page content ── -->
-      <div class="container pb-5">
+      <main class="container py-4">
         <router-view />
-      </div>
+      </main>
 
       <!-- ── Toast notifications ── -->
       <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1200;">

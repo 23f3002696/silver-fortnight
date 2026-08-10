@@ -138,9 +138,11 @@ export default {
   template: `
     <div>
       <!-- Hero -->
-      <div class="border rounded p-4 p-md-5 text-center shadow-sm bg-white mb-4">
-        <i class="bi bi-compass text-primary" style="font-size: 2.5rem;"></i>
-        <h1 class="h3 fw-bold mt-2 mb-2">Silver Fortnight Trekking</h1>
+      <div class="hero-panel p-4 p-md-5 text-center mb-4">
+        <span class="stat-icon chip-green d-block mx-auto" style="width:3.4rem;height:3.4rem;font-size:1.5rem;border-radius:0.9rem;">
+          <i class="bi bi-compass"></i>
+        </span>
+        <h1 class="h3 fw-bold mt-3 mb-2">Silver Fortnight Trekking</h1>
         <p class="text-muted mx-auto mb-4" style="max-width: 40rem;">
           Guided treks for every level of adventurer. Browse our live trekking
           statistics below, then create an account to book your next trail.
@@ -160,34 +162,41 @@ export default {
         </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading live statistics...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading live statistics&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
 
       <template v-else>
         <!-- Stat cards -->
         <div class="row g-3">
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#90CAF9;">{{ stats.total_treks }}</div>
-              <div class="text-muted small">Treks Organised</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-blue mb-2"><i class="bi bi-map"></i></span>
+              <div class="stat-value">{{ stats.total_treks }}</div>
+              <div class="stat-label">Total Treks</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#A5D6A7;">{{ stats.open_treks }}</div>
-              <div class="text-muted small">Open for Booking</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-green mb-2"><i class="bi bi-signpost-2"></i></span>
+              <div class="stat-value">{{ stats.open_treks }}</div>
+              <div class="stat-label">Open for Booking</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#B39DDB;">{{ stats.completed_treks }}</div>
-              <div class="text-muted small">Treks Completed</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-purple mb-2"><i class="bi bi-flag"></i></span>
+              <div class="stat-value">{{ stats.completed_treks }}</div>
+              <div class="stat-label">Treks Completed</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#F48FB1;">{{ stats.total_participants }}</div>
-              <div class="text-muted small">Trekkers on the Trail</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-pink mb-2"><i class="bi bi-people"></i></span>
+              <div class="stat-value">{{ stats.total_participants }}</div>
+              <div class="stat-label">Trail Participants</div>
             </div>
           </div>
         </div>
@@ -200,16 +209,16 @@ export default {
           <!-- Charts row 1 -->
           <div class="row g-3 mt-1">
             <div class="col-lg-8">
-              <div class="border rounded p-4 h-100 bg-white">
+              <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Booking Trend</h6>
                 <p class="text-muted small mb-3">Bookings made over the last 6 months.</p>
                 <div style="height: 260px;"><canvas ref="trendCanvas"></canvas></div>
               </div>
             </div>
             <div class="col-lg-4">
-              <div class="border rounded p-4 h-100 bg-white">
+              <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
-                <p class="text-muted small mb-3">Where trekkers put their boots.</p>
+                <p class="text-muted small mb-3">Share of bookings by trek difficulty.</p>
                 <div style="height: 260px;"><canvas ref="difficultyCanvas"></canvas></div>
               </div>
             </div>
@@ -218,7 +227,7 @@ export default {
           <!-- Charts row 2 -->
           <div class="row g-3 mt-1">
             <div class="col-lg-7">
-              <div class="border rounded p-4 h-100 bg-white">
+              <div class="border rounded p-4 h-100">
                 <h6 class="fw-semibold mb-1">Most Popular Treks</h6>
                 <p class="text-muted small mb-3">Ranked by number of bookings.</p>
                 <div :style="{ height: Math.max(180, (stats.popular_treks.length || 1) * 44) + 'px' }">
@@ -227,7 +236,7 @@ export default {
               </div>
             </div>
             <div class="col-lg-5">
-              <div class="border rounded p-4 h-100 bg-white d-flex flex-column">
+              <div class="border rounded p-4 h-100 d-flex flex-column">
                 <h6 class="fw-semibold mb-3">Ready for the trail?</h6>
                 <ul class="list-unstyled small text-secondary d-flex flex-column gap-2 mb-4">
                   <li><i class="bi bi-check-circle-fill text-success me-2"></i>Browse open treks with difficulty, location and duration filters.</li>

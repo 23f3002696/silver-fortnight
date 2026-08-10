@@ -65,7 +65,7 @@ export default {
         <h1 class="h4 mb-3">My Profile</h1>
 
         <div class="card shadow-sm">
-          <div class="card-body p-4">
+          <div class="card-body p-4 p-md-5">
             <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
 
             <form @submit.prevent="submitForm">
@@ -94,7 +94,10 @@ export default {
               </div>
 
               <hr class="my-4" />
-              <h6 class="fw-semibold mb-3">Change Password <span class="text-muted small fw-normal">(optional)</span></h6>
+              <h6 class="fw-semibold mb-3">
+                <i class="bi bi-shield-lock me-2 text-primary"></i>Change Password
+                <span class="text-muted small fw-normal">(optional)</span>
+              </h6>
 
               <div class="mb-3">
                 <label class="form-label" for="currentPassword">Current Password</label>
@@ -132,6 +135,7 @@ export default {
               </div>
 
               <button type="submit" class="btn btn-primary w-100" :disabled="saving">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2" role="status"></span>
                 {{ saving ? "Saving..." : "Save Changes" }}
               </button>
             </form>

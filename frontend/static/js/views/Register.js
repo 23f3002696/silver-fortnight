@@ -77,15 +77,17 @@ export default {
   },
   template: `
     <div class="row justify-content-center">
-      <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-        <div class="card shadow-sm mt-5 border-0">
-          <div class="card-body p-4">
+      <div class="col-12 col-sm-9 col-md-7 col-lg-5">
+        <div class="card shadow-sm mt-4">
+          <div class="card-body p-4 p-md-5">
 
             <div class="text-center mb-4">
-              <i class="bi bi-person-plus-fill text-primary fs-2 d-block mb-2"></i>
+              <span class="stat-icon chip-green d-block mx-auto mb-3" style="width:3rem;height:3rem;font-size:1.3rem;">
+                <i class="bi bi-person-plus"></i>
+              </span>
               <h1 class="h5 mb-1">Create your trekker account</h1>
               <p class="text-muted small mb-0">
-                Admin and Trek Staff accounts are created separately.
+                Trek staff and admin accounts are created separately.
               </p>
             </div>
 
@@ -176,7 +178,7 @@ export default {
               </button>
             </form>
 
-            <p class="text-center small mt-3 mb-0">
+            <p class="text-center small mt-4 mb-0">
               Already have an account?
               <router-link to="/login">Sign in</router-link>
             </p>

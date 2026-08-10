@@ -82,20 +82,23 @@ export default {
         <h1 class="h4 mb-0">Browse Treks</h1>
       </div>
 
-      <div class="row g-2 mb-3">
+      <div class="toolbar row g-2 mb-3">
         <div class="col-12 col-md-4">
-          <input
-            v-model="searchQuery"
-            @input="onSearchInput"
-            type="search"
-            class="form-control"
-            placeholder="Search by name or location..."
-          />
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              v-model="searchQuery"
+              @input="onSearchInput"
+              type="search"
+              class="form-control"
+              placeholder="Search by name or location..."
+            />
+          </div>
         </div>
         <div class="col-6 col-md-2">
           <select v-model="difficultyFilter" @change="fetchTreks" class="form-select">
             <option value="">All difficulties</option>
-            <option v-for="d in difficulties" :key="d" :value="d">{{ d }}</option>
+            <option v-for="d in difficulties" :key="d" :value="d">{{ d.charAt(0).toUpperCase() + d.slice(1) }}</option>
           </select>
         </div>
         <div class="col-6 col-md-3">
@@ -120,7 +123,10 @@ export default {
         </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading treks&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
@@ -130,7 +136,7 @@ export default {
           <table class="table table-borderless mb-0 align-middle">
             <thead class="border-bottom">
               <tr>
-                <th>Name</th>
+                <th>Trek</th>
                 <th>Difficulty</th>
                 <th>Duration</th>
                 <th>Dates</th>
@@ -142,14 +148,16 @@ export default {
             <tbody>
               <tr v-for="trek in treks" :key="trek.id">
                 <td>
-                  <div class="fw-medium">{{ trek.name }}</div>
-                  <div class="small text-muted" v-if="trek.location">{{ trek.location }}</div>
+                  <div class="fw-semibold">{{ trek.name }}</div>
+                  <div class="small text-muted" v-if="trek.location">
+                    <i class="bi bi-geo-alt me-1"></i>{{ trek.location }}
+                  </div>
                 </td>
-                <td><span class="badge" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
-                <td>{{ trek.duration_days }}d</td>
+                <td><span class="badge text-capitalize" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
+                <td>{{ trek.duration_days }} {{ trek.duration_days === 1 ? 'day' : 'days' }}</td>
                 <td class="small">{{ formatDate(trek.start_date) }} &ndash; {{ formatDate(trek.end_date) }}</td>
                 <td>{{ trek.available_slots }}</td>
-                <td><span class="badge" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
+                <td><span class="badge text-capitalize" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
                 <td class="text-center" style="white-space: nowrap;">
                   <span v-if="trek.user_booking_status === 'booked'" class="badge text-bg-info">Booked</span>
                   <span v-else-if="trek.user_booking_status === 'completed'" class="badge text-bg-primary">Completed</span>
@@ -161,7 +169,7 @@ export default {
                     :disabled="bookingId === trek.id"
                     @click="bookTrek(trek)"
                   >
-                    {{ bookingId === trek.id ? "Booking..." : "Book" }}
+                    <i class="bi bi-plus-circle me-1"></i>{{ bookingId === trek.id ? "Booking..." : "Book" }}
                   </button>
                 </td>
               </tr>

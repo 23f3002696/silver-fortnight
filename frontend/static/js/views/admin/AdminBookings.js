@@ -53,25 +53,31 @@ export default {
     <div>
       <h1 class="h4 mb-3">All Booking Records</h1>
 
-      <div class="row g-2 mb-3">
+      <div class="toolbar row g-2 mb-3">
         <div class="col-12 col-md-8">
-          <input
-            v-model="searchQuery"
-            @input="onSearchInput"
-            type="search"
-            class="form-control"
-            placeholder="Search by trekker username or trek name..."
-          />
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              v-model="searchQuery"
+              @input="onSearchInput"
+              type="search"
+              class="form-control"
+              placeholder="Search by trekker username or trek name..."
+            />
+          </div>
         </div>
         <div class="col-12 col-md-4">
           <select v-model="statusFilter" @change="fetchBookings" class="form-select">
             <option value="">All statuses</option>
-            <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in statuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
           </select>
         </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading bookings&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="bookings.length === 0" class="p-4 text-secondary text-center">No bookings found.</div>
@@ -88,11 +94,11 @@ export default {
             </thead>
             <tbody>
               <tr v-for="booking in bookings" :key="booking.id">
-                <td>{{ booking.username }}</td>
+                <td class="fw-medium">{{ booking.username }}</td>
                 <td>{{ booking.trek_name }}</td>
-                <td>{{ formatDate(booking.booking_date) }}</td>
-                <td><span class="badge" :class="statusBadge[booking.status]">{{ booking.status }}</span></td>
-                <td><span class="text-muted small text-capitalize">{{ booking.payment_status.replace('_', ' ') }}</span></td>
+                <td class="small">{{ formatDate(booking.booking_date) }}</td>
+                <td><span class="badge text-capitalize" :class="statusBadge[booking.status]">{{ booking.status }}</span></td>
+                <td><span class="text-muted small text-capitalize">{{ booking.payment_status.replace(/_/g, ' ') }}</span></td>
               </tr>
             </tbody>
           </table>

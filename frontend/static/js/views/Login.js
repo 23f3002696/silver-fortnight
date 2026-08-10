@@ -33,13 +33,15 @@ export default {
   template: `
     <div class="row justify-content-center">
       <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-        <div class="card shadow-sm mt-5 border-0">
-          <div class="card-body p-4">
+        <div class="card shadow-sm mt-4">
+          <div class="card-body p-4 p-md-5">
 
             <div class="text-center mb-4">
-              <i class="bi bi-compass text-primary fs-2 d-block mb-2"></i>
+              <span class="stat-icon chip-green d-block mx-auto mb-3" style="width:3rem;height:3rem;font-size:1.3rem;">
+                <i class="bi bi-box-arrow-in-right"></i>
+              </span>
               <h1 class="h5 mb-1">Sign in</h1>
-              <p class="text-muted small mb-0">Trekkers, Trek Staff, and Admin all sign in here.</p>
+              <p class="text-muted small mb-0">Trekkers, trek staff and admins all sign in here.</p>
             </div>
 
             <div v-if="error" class="alert alert-danger py-2 small">{{ error }}</div>
@@ -73,7 +75,7 @@ export default {
               </button>
             </form>
 
-            <p class="text-center small mt-3 mb-0">
+            <p class="text-center small mt-4 mb-0">
               New trekker?
               <router-link to="/register">Create an account</router-link>
             </p>

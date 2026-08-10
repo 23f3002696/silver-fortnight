@@ -182,34 +182,41 @@ export default {
         </button>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading analytics&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
 
       <div v-else>
         <!-- Headline numbers -->
         <div class="row g-3">
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#F48FB1;">{{ stats.total_bookings }}</div>
-              <div class="text-muted small">Total Bookings</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-pink mb-2"><i class="bi bi-journal-check"></i></span>
+              <div class="stat-value">{{ stats.total_bookings }}</div>
+              <div class="stat-label">Total Bookings</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#B39DDB;">{{ stats.completed_treks }}</div>
-              <div class="text-muted small">Treks Completed</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-purple mb-2"><i class="bi bi-flag"></i></span>
+              <div class="stat-value">{{ stats.completed_treks }}</div>
+              <div class="stat-label">Treks Completed</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#A5D6A7;">{{ stats.total_participants }}</div>
-              <div class="text-muted small">Unique Participants</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-green mb-2"><i class="bi bi-people"></i></span>
+              <div class="stat-value">{{ stats.total_participants }}</div>
+              <div class="stat-label">Unique Participants</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="border rounded p-3 text-center h-100">
-              <div class="fs-2 fw-bold" style="color:#90CAF9;">{{ stats.bookings_by_status.booked || 0 }}</div>
-              <div class="text-muted small">Active Bookings</div>
+            <div class="stat-card">
+              <span class="stat-icon chip-blue mb-2"><i class="bi bi-bookmark-check"></i></span>
+              <div class="stat-value">{{ stats.bookings_by_status.booked || 0 }}</div>
+              <div class="stat-label">Active Bookings</div>
             </div>
           </div>
         </div>
@@ -217,14 +224,14 @@ export default {
         <!-- Monthly trend + booking status -->
         <div class="row g-3 mt-1">
           <div class="col-lg-8">
-            <div class="border rounded p-4 h-100 bg-white">
+            <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Monthly Booking &amp; Participation Trend</h6>
               <p class="text-muted small mb-3">Last 12 months &mdash; bookings made and unique participants per month.</p>
               <div style="height: 280px;"><canvas ref="trendCanvas"></canvas></div>
             </div>
           </div>
           <div class="col-lg-4">
-            <div class="border rounded p-4 h-100 bg-white">
+            <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Bookings by Status</h6>
               <p class="text-muted small mb-3">All-time booking outcomes.</p>
               <div style="height: 280px;"><canvas ref="statusCanvas"></canvas></div>
@@ -235,7 +242,7 @@ export default {
         <!-- Popular treks + top participants -->
         <div class="row g-3 mt-1">
           <div class="col-lg-7">
-            <div class="border rounded p-4 h-100 bg-white">
+            <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Most Popular Treks</h6>
               <p class="text-muted small mb-3">Top 5 treks ranked by non-cancelled bookings.</p>
               <div v-if="stats.popular_treks.length === 0" class="text-secondary small">
@@ -247,7 +254,7 @@ export default {
             </div>
           </div>
           <div class="col-lg-5">
-            <div class="border rounded p-4 h-100 bg-white">
+            <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Top Participants</h6>
               <p class="text-muted small mb-3">Trekkers with the most non-cancelled bookings.</p>
               <div v-if="stats.top_participants.length === 0" class="text-secondary small">
@@ -256,15 +263,15 @@ export default {
               <table v-else class="table table-sm table-borderless align-middle mb-0">
                 <thead class="border-bottom">
                   <tr>
-                    <th class="text-muted small fw-semibold">#</th>
-                    <th class="text-muted small fw-semibold">Trekker</th>
-                    <th class="text-muted small fw-semibold text-end">Bookings</th>
+                    <th>#</th>
+                    <th>Trekker</th>
+                    <th class="text-end">Bookings</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in stats.top_participants" :key="row.username">
                     <td class="text-muted">{{ index + 1 }}</td>
-                    <td class="fw-medium">{{ row.username }}</td>
+                    <td class="fw-semibold">{{ row.username }}</td>
                     <td class="text-end">{{ row.bookings }}</td>
                   </tr>
                 </tbody>
@@ -276,7 +283,7 @@ export default {
         <!-- Difficulty mix -->
         <div class="row g-3 mt-1">
           <div class="col-lg-4">
-            <div class="border rounded p-4 bg-white">
+            <div class="border rounded p-4">
               <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
               <p class="text-muted small mb-3">Non-cancelled bookings grouped by trek difficulty.</p>
               <div style="height: 240px;"><canvas ref="difficultyCanvas"></canvas></div>

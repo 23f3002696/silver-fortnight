@@ -146,7 +146,7 @@ export default {
       return booking.status === "booked" && PAYABLE_STATUSES.includes(booking.payment_status);
     },
     formatPaymentStatus(status) {
-      return (status || "").replace("_", " ");
+      return (status || "").replace(/_/g, " ");
     },
     openPayment(booking) {
       this.payment = {
@@ -229,6 +229,7 @@ export default {
         <div class="text-end">
           <button class="btn btn-sm btn-outline-primary" :disabled="exporting" @click="exportCsv">
             <span v-if="exporting" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <i v-else class="bi bi-file-earmark-arrow-down me-1"></i>
             {{ exporting ? "Preparing export..." : "Export CSV" }}
           </button>
           <div v-if="exportStatus === 'ready'" class="small text-success mt-1">{{ exportMessage }}</div>
@@ -236,14 +237,17 @@ export default {
         </div>
       </div>
 
-      <div class="mb-3">
+      <div class="toolbar mb-3">
         <select v-model="statusFilter" @change="fetchBookings" class="form-select" style="max-width: 220px;">
           <option value="">All statuses</option>
-          <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+          <option v-for="s in statuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
         </select>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading your bookings&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="bookings.length === 0" class="p-4 text-secondary text-center">
@@ -265,15 +269,17 @@ export default {
             <tbody>
               <tr v-for="booking in bookings" :key="booking.id">
                 <td>
-                  <div class="fw-medium">{{ booking.trek_name }}</div>
-                  <div class="small text-muted" v-if="booking.trek_location">{{ booking.trek_location }}</div>
+                  <div class="fw-semibold">{{ booking.trek_name }}</div>
+                  <div class="small text-muted" v-if="booking.trek_location">
+                    <i class="bi bi-geo-alt me-1"></i>{{ booking.trek_location }}
+                  </div>
                 </td>
-                <td><span class="badge" :class="difficultyBadge[booking.trek_difficulty]">{{ booking.trek_difficulty }}</span></td>
+                <td><span class="badge text-capitalize" :class="difficultyBadge[booking.trek_difficulty]">{{ booking.trek_difficulty }}</span></td>
                 <td class="small">{{ formatDay(booking.trek_start_date) }} &ndash; {{ formatDay(booking.trek_end_date) }}</td>
-                <td>{{ formatDate(booking.booking_date) }}</td>
-                <td><span class="badge" :class="statusBadge[booking.status]">{{ booking.status }}</span></td>
-                <td><span class="badge" :class="paymentBadge[booking.payment_status]">{{ formatPaymentStatus(booking.payment_status) }}</span></td>
-                <td class="text-center">
+                <td class="small">{{ formatDate(booking.booking_date) }}</td>
+                <td><span class="badge text-capitalize" :class="statusBadge[booking.status]">{{ booking.status }}</span></td>
+                <td><span class="badge text-capitalize" :class="paymentBadge[booking.payment_status]">{{ formatPaymentStatus(booking.payment_status) }}</span></td>
+                <td class="text-center" style="white-space: nowrap;">
                   <template v-if="booking.status === 'booked'">
                     <button
                       v-if="canPay(booking)"
@@ -287,6 +293,7 @@ export default {
                       :disabled="cancellingId === booking.id"
                       @click="cancelBooking(booking)"
                     >
+                      <span v-if="cancellingId === booking.id" class="spinner-border spinner-border-sm me-1" role="status"></span>
                       {{ cancellingId === booking.id ? "Cancelling..." : "Cancel" }}
                     </button>
                   </template>

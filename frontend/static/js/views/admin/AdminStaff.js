@@ -102,56 +102,64 @@ export default {
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h4 mb-0">Trek Staff</h1>
         <button class="btn btn-primary btn-sm" @click="openCreateModal">
-          <i class="bi bi-plus-lg"></i> Add Staff
+          <i class="bi bi-person-plus me-1"></i>Add Staff
         </button>
       </div>
 
-      <div class="mb-3">
-        <input
-          v-model="searchQuery"
-          @input="onSearchInput"
-          type="search"
-          class="form-control"
-          placeholder="Search by name, username, or email..."
-        />
+      <div class="toolbar mb-3">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            type="search"
+            class="form-control"
+            placeholder="Search by name, username, or email..."
+          />
+        </div>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading trek staff&hellip;
+      </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
-      <div v-else class="border rounded mb-1">
-        <div v-if="staff.length === 0" class="p-4 text-secondary text-center">No Trek Staff found.</div>
+      <div v-else class="border rounded">
+        <div v-if="staff.length === 0" class="p-4 text-secondary text-center">No trek staff found.</div>
         <div
           v-for="member in staff"
           :key="member.id"
-          class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 p-3 border-bottom"
+          class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 p-3 border-bottom"
         >
-          <div>
-            <span class="fw-medium" :class="{ 'text-danger text-decoration-line-through': !member.is_active }">
-              {{ member.name || member.username }}
-            </span>
-            <span v-if="!member.is_active" class="badge bg-danger ms-1">Deactivated</span>
-            <div class="mt-1">
-              <small class="text-muted">
+          <div class="d-flex align-items-center gap-3">
+            <span class="avatar">{{ (member.name || member.username).charAt(0).toUpperCase() }}</span>
+            <div>
+              <span class="fw-semibold" :class="{ 'text-danger text-decoration-line-through': !member.is_active }">
+                {{ member.name || member.username }}
+              </span>
+              <span v-if="!member.is_active" class="badge text-bg-danger ms-1">Deactivated</span>
+              <div class="small text-muted mt-1">
                 {{ member.username }} &middot; {{ member.email }}
                 <span v-if="member.contact_number">&middot; {{ member.contact_number }}</span>
-                &middot; {{ member.assigned_treks_count }} trek(s) assigned
-              </small>
+                &middot; {{ member.assigned_treks_count }} {{ member.assigned_treks_count === 1 ? 'trek' : 'treks' }} assigned
+              </div>
             </div>
           </div>
-          <div class="d-flex gap-2 align-items-center flex-shrink-0">
+          <div class="d-flex gap-2 align-items-center flex-shrink-0 ms-auto">
             <button
               class="btn btn-sm rounded-pill px-3"
               :class="member.is_active ? 'btn-outline-danger' : 'btn-outline-success'"
               @click="toggleActive(member)"
             >
+              <i class="bi" :class="member.is_active ? 'bi-person-x' : 'bi-person-check'" style="margin-right:0.3rem;"></i>
               {{ member.is_active ? "Deactivate" : "Activate" }}
             </button>
             <button
-              class="btn btn-outline-danger btn-sm rounded-pill px-3 d-flex align-items-center justify-content-center"
+              class="btn btn-outline-danger btn-sm rounded-pill px-2"
               @click="deleteStaff(member)"
               title="Remove"
             >
-              <i class="bi bi-trash3-fill"></i>
+              <i class="bi bi-trash3"></i>
             </button>
           </div>
         </div>

@@ -145,27 +145,31 @@ export default {
 
       <div v-if="stats" class="row g-3 mb-4">
         <div class="col-6 col-md-3">
-          <div class="border rounded p-3 text-center h-100">
-            <div class="fs-2 fw-bold" style="color:#90CAF9;">{{ stats.assigned_treks }}</div>
-            <div class="text-muted small">Assigned Treks</div>
+          <div class="stat-card">
+            <span class="stat-icon chip-blue mb-2"><i class="bi bi-map"></i></span>
+            <div class="stat-value">{{ stats.assigned_treks }}</div>
+            <div class="stat-label">Assigned Treks</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="border rounded p-3 text-center h-100">
-            <div class="fs-2 fw-bold" style="color:#A5D6A7;">{{ stats.total_registered_trekkers }}</div>
-            <div class="text-muted small">Registered Trekkers</div>
+          <div class="stat-card">
+            <span class="stat-icon chip-green mb-2"><i class="bi bi-people"></i></span>
+            <div class="stat-value">{{ stats.total_registered_trekkers }}</div>
+            <div class="stat-label">Registered Trekkers</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="border rounded p-3 text-center h-100">
-            <div class="fs-2 fw-bold" style="color:#FFCC80;">{{ stats.total_available_slots }}</div>
-            <div class="text-muted small">Available Slots</div>
+          <div class="stat-card">
+            <span class="stat-icon chip-orange mb-2"><i class="bi bi-ticket-perforated"></i></span>
+            <div class="stat-value">{{ stats.total_available_slots }}</div>
+            <div class="stat-label">Available Slots</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="border rounded p-3 text-center h-100">
-            <div class="fs-2 fw-bold" style="color:#F48FB1;">{{ stats.treks_by_status.open || 0 }}</div>
-            <div class="text-muted small">Open Treks</div>
+          <div class="stat-card">
+            <span class="stat-icon chip-pink mb-2"><i class="bi bi-signpost-2"></i></span>
+            <div class="stat-value">{{ stats.treks_by_status.open || 0 }}</div>
+            <div class="stat-label">Open Treks</div>
           </div>
         </div>
       </div>
@@ -174,16 +178,19 @@ export default {
         <h2 class="h5 mb-0">My Treks</h2>
       </div>
 
-      <div v-if="loading" class="text-muted">Loading...</div>
+      <div v-if="loading" class="loading-box">
+        <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        Loading your treks&hellip;
+      </div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
-          No treks assigned yet. Check back once the Admin assigns a trek to you.
+          No treks assigned yet. You'll see them here once an admin assigns one to you.
         </div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
             <thead class="border-bottom">
               <tr>
-                <th>Name</th>
+                <th>Trek</th>
                 <th>Difficulty</th>
                 <th>Duration</th>
                 <th>Slots</th>
@@ -195,16 +202,18 @@ export default {
             <tbody>
               <tr v-for="trek in treks" :key="trek.id">
                 <td>
-                  <div class="fw-medium">{{ trek.name }}</div>
-                  <div class="small text-muted" v-if="trek.location">{{ trek.location }}</div>
+                  <div class="fw-semibold">{{ trek.name }}</div>
+                  <div class="small text-muted" v-if="trek.location">
+                    <i class="bi bi-geo-alt me-1"></i>{{ trek.location }}
+                  </div>
                 </td>
-                <td><span class="badge" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
-                <td>{{ trek.duration_days }}d</td>
+                <td><span class="badge text-capitalize" :class="difficultyBadge[trek.difficulty]">{{ trek.difficulty }}</span></td>
+                <td>{{ trek.duration_days }} {{ trek.duration_days === 1 ? 'day' : 'days' }}</td>
                 <td>{{ trek.available_slots }}</td>
-                <td><span class="badge" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
+                <td><span class="badge text-capitalize" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
                 <td>{{ trek.active_bookings_count }}</td>
                 <td class="text-center" style="white-space: nowrap;">
-                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Update slots/status">
+                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Update slots and status">
                     <i class="bi bi-pencil"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-secondary" @click="openParticipants(trek)" title="View participants">
@@ -247,10 +256,10 @@ export default {
                 <div class="mb-0">
                   <label class="form-label">Status</label>
                   <select v-model="editForm.status" class="form-select" :class="{ 'is-invalid': editErrors.status }">
-                    <option v-for="s in editableStatuses" :key="s" :value="s">{{ s }}</option>
+                    <option v-for="s in editableStatuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
                   </select>
                   <div class="invalid-feedback">{{ editErrors.status }}</div>
-                  <div class="form-text">Marking a trek "completed" also closes out any still-booked reservations.</div>
+                  <div class="form-text">Marking a trek as "Completed" also closes out any still-booked reservations.</div>
                 </div>
               </div>
               <div class="modal-footer">
@@ -276,7 +285,10 @@ export default {
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div v-if="participantsLoading" class="text-muted">Loading...</div>
+              <div v-if="participantsLoading" class="loading-box">
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                Loading participants&hellip;
+              </div>
               <div v-else-if="participantsError" class="alert alert-danger">{{ participantsError }}</div>
               <div v-else-if="participants.length === 0" class="text-secondary text-center p-3">
                 No trekkers have booked this trek yet.
@@ -295,12 +307,12 @@ export default {
                   <tbody>
                     <tr v-for="p in participants" :key="p.id">
                       <td>
-                        <div class="fw-medium">{{ p.username }}</div>
+                        <div class="fw-semibold">{{ p.username }}</div>
                         <div class="small text-muted">{{ p.email }}</div>
                       </td>
-                      <td>{{ formatDate(p.booking_date) }}</td>
-                      <td><span class="badge" :class="bookingStatusBadge[p.status]">{{ p.status }}</span></td>
-                      <td><span class="text-muted small text-capitalize">{{ p.payment_status.replace('_', ' ') }}</span></td>
+                      <td class="small">{{ formatDate(p.booking_date) }}</td>
+                      <td><span class="badge text-capitalize" :class="bookingStatusBadge[p.status]">{{ p.status }}</span></td>
+                      <td><span class="text-muted small text-capitalize">{{ p.payment_status.replace(/_/g, ' ') }}</span></td>
                       <td class="text-center">
                         <button
                           v-if="p.status === 'booked'"
@@ -308,6 +320,7 @@ export default {
                           :disabled="cancellingId === p.id"
                           @click="cancelParticipant(p)"
                         >
+                          <span v-if="cancellingId === p.id" class="spinner-border spinner-border-sm me-1" role="status"></span>
                           {{ cancellingId === p.id ? "Cancelling..." : "Cancel" }}
                         </button>
                       </td>
