@@ -148,12 +148,19 @@ export default {
       }
     },
     async deleteTrek(trek) {
-      if (!confirm(`Delete "${trek.name}"? This cannot be undone.`)) return;
+      const confirmed = await window.showConfirm(
+        `Delete "${trek.name}"? This cannot be undone.`
+      );
+      if (!confirmed) return;
       try {
         await api.delete(`/admin/treks/${trek.id}`);
+        window.showToast(`"${trek.name}" deleted.`, "success");
         await this.fetchTreks();
       } catch (err) {
-        alert(err.response?.data?.message || "Could not delete this trek.");
+        window.showToast(
+          err.response?.data?.message || "Could not delete this trek.",
+          "danger"
+        );
       }
     },
     formatDate(value) {

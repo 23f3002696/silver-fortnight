@@ -52,13 +52,20 @@ export default {
       return new Date(value).toLocaleDateString();
     },
     async cancelBooking(booking) {
-      if (!confirm(`Cancel your booking for "${booking.trek_name}"?`)) return;
+      const confirmed = await window.showConfirm(
+        `Cancel your booking for "${booking.trek_name}"?`
+      );
+      if (!confirmed) return;
       this.cancellingId = booking.id;
       try {
         await api.post(`/user/bookings/${booking.id}/cancel`);
+        window.showToast("Booking cancelled.", "warning");
         await this.fetchBookings();
       } catch (err) {
-        alert(err.response?.data?.message || "Could not cancel this booking.");
+        window.showToast(
+          err.response?.data?.message || "Could not cancel this booking.",
+          "danger"
+        );
       } finally {
         this.cancellingId = null;
       }
@@ -88,16 +95,19 @@ export default {
           this.exporting = false;
           this.exportStatus = "error";
           this.exportMessage = data.message || "The export failed. Please try again.";
+          window.showToast(this.exportMessage, "danger");
           return;
         }
         await this.downloadCsv(taskId);
         this.exporting = false;
         this.exportStatus = "ready";
         this.exportMessage = "Download started \u2014 we also emailed you a confirmation.";
+        window.showToast(this.exportMessage, "success");
       } catch (err) {
         this.exporting = false;
         this.exportStatus = "error";
         this.exportMessage = "Could not check the export status.";
+        window.showToast(this.exportMessage, "danger");
       }
     },
     async downloadCsv(taskId) {

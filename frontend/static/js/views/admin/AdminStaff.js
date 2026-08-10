@@ -68,18 +68,32 @@ export default {
     async toggleActive(member) {
       try {
         await api.post(`/admin/staff/${member.id}/toggle-active`);
+        window.showToast(
+          `"${member.name || member.username}" ${member.is_active ? "deactivated" : "activated"}.`,
+          "success"
+        );
         await this.fetchStaff();
       } catch (err) {
-        alert(err.response?.data?.message || "Could not update this staff member.");
+        window.showToast(
+          err.response?.data?.message || "Could not update this staff member.",
+          "danger"
+        );
       }
     },
     async deleteStaff(member) {
-      if (!confirm(`Remove Trek Staff "${member.username}"? This cannot be undone.`)) return;
+      const confirmed = await window.showConfirm(
+        `Remove Trek Staff "${member.username}"? This cannot be undone.`
+      );
+      if (!confirmed) return;
       try {
         await api.delete(`/admin/staff/${member.id}`);
+        window.showToast(`"${member.username}" removed.`, "success");
         await this.fetchStaff();
       } catch (err) {
-        alert(err.response?.data?.message || "Could not remove this staff member.");
+        window.showToast(
+          err.response?.data?.message || "Could not remove this staff member.",
+          "danger"
+        );
       }
     },
   },

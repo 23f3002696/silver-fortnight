@@ -26,8 +26,6 @@ export default {
       trekStatusBadge: TREK_STATUS_BADGE,
       searchTimer: null,
       bookingId: null,
-      feedback: "",
-      feedbackError: "",
     };
   },
   async created() {
@@ -63,15 +61,16 @@ export default {
       return trek.status === "open" && trek.available_slots > 0 && trek.user_booking_status !== "booked";
     },
     async bookTrek(trek) {
-      this.feedback = "";
-      this.feedbackError = "";
       this.bookingId = trek.id;
       try {
         const { data } = await api.post(`/user/treks/${trek.id}/book`);
-        this.feedback = data.message;
+        window.showToast(data.message || "Trek booked successfully!", "success");
         await this.fetchTreks();
       } catch (err) {
-        this.feedbackError = err.response?.data?.message || "Could not book this trek.";
+        window.showToast(
+          err.response?.data?.message || "Could not book this trek.",
+          "danger"
+        );
       } finally {
         this.bookingId = null;
       }
@@ -82,9 +81,6 @@ export default {
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h4 mb-0">Browse Treks</h1>
       </div>
-
-      <div v-if="feedback" class="alert alert-success py-2">{{ feedback }}</div>
-      <div v-if="feedbackError" class="alert alert-danger py-2">{{ feedbackError }}</div>
 
       <div class="row g-2 mb-3">
         <div class="col-12 col-md-4">

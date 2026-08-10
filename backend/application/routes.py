@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from flask import current_app as app, jsonify, request, abort, send_from_directory
 from sqlalchemy import or_
 from .models import User, Trek, StaffProfile, Booking
@@ -9,6 +10,7 @@ from .constants import BookingStatus, Role, StaffStatus, TrekDifficulty, TrekSta
 from .security import jwt_blocklist
 from celery.result import AsyncResult
 from .tasks import export_user_bookings_csv, send_monthly_report
+from .mail import send_email
 from .cache import (
     _serialize_staff,
     _serialize_trek,
@@ -26,6 +28,49 @@ from .cache import (
     invalidate_trek_caches,
     invalidate_user_caches,
 )
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+def _send_booking_confirmation(user, trek):
+    """Send a booking confirmation email. Failures are logged but never re-raised."""
+    html = (
+        f"<h3>Hi {user.username},</h3>"
+        f"<p>Your booking for <strong>{trek.name}</strong> has been confirmed!</p>"
+        "<table cellpadding='6' style='border-collapse:collapse;'>"
+        f"<tr><td><strong>Location:</strong></td><td>{trek.location or 'TBA'}</td></tr>"
+        f"<tr><td><strong>Difficulty:</strong></td><td style='text-transform:capitalize'>{trek.difficulty}</td></tr>"
+        f"<tr><td><strong>Duration:</strong></td><td>{trek.duration_days} day(s)</td></tr>"
+        f"<tr><td><strong>Start Date:</strong></td><td>{trek.start_date.isoformat() if trek.start_date else 'TBA'}</td></tr>"
+        f"<tr><td><strong>End Date:</strong></td><td>{trek.end_date.isoformat() if trek.end_date else 'TBA'}</td></tr>"
+        "</table>"
+        "<p>See you on the trail! &mdash; Silver Fortnight Trekking Team</p>"
+    )
+    try:
+        send_email(user.email, subject=f"Booking Confirmed: {trek.name}", message=html)
+    except Exception:
+        app.logger.exception("Failed to send booking confirmation email; booking still recorded.")
+
+
+def _send_cancellation_notification(user, trek, cancelled_by="user"):
+    """Send a cancellation notification email. Failures are logged but never re-raised."""
+    if cancelled_by == "staff":
+        reason = (
+            "<p>Your booking has been cancelled by the Trek Staff. "
+            "Please contact the administrator if you have any questions.</p>"
+        )
+    else:
+        reason = "<p>You have successfully cancelled your booking.</p>"
+    html = (
+        f"<h3>Hi {user.username},</h3>"
+        f"<p>Your booking for <strong>{trek.name}</strong> has been cancelled.</p>"
+        f"{reason}"
+        "<p>&mdash; Silver Fortnight Trekking Team</p>"
+    )
+    try:
+        send_email(user.email, subject=f"Booking Cancelled: {trek.name}", message=html)
+    except Exception:
+        app.logger.exception("Failed to send cancellation notification email; booking still cancelled.")
+
 
 def role_required(*roles):
     def wrapper(func):
@@ -48,8 +93,8 @@ def _validate_registration_payload(data):
     errors = {}
     if not username or len(username) < 3:
         errors["username"] = "Username is required and must be at least 3 characters."
-    if not email or "@" not in email:
-        errors["email"] = "A valid email is required."
+    if not email or not _EMAIL_RE.match(email):
+        errors["email"] = "A valid email address is required."
     if not password or len(password) < 6:
         errors["password"] = "Password is required and must be at least 6 characters."
  
@@ -569,6 +614,9 @@ def staff_cancel_participant(trek_id, booking_id):
     trek.available_slots += 1
     db.session.commit()
     invalidate_trek_caches()
+
+    _send_cancellation_notification(booking.user, trek, cancelled_by="staff")
+
     return jsonify(
         message="Booking cancelled.",
         trek=_serialize_trek(trek),
@@ -700,6 +748,8 @@ def user_book_trek(trek_id):
     db.session.commit()
     invalidate_trek_caches()
 
+    _send_booking_confirmation(current_user, trek)
+
     return jsonify(
         message="Trek booked successfully.",
         booking=_serialize_user_booking(booking),
@@ -733,6 +783,9 @@ def user_cancel_booking(booking_id):
     booking.trek.available_slots += 1
     db.session.commit()
     invalidate_trek_caches()
+
+    _send_cancellation_notification(current_user, booking.trek, cancelled_by="user")
+
     return jsonify(message="Booking cancelled.", booking=_serialize_user_booking(booking))
 
 

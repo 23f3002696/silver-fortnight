@@ -15,7 +15,6 @@ export default {
       },
       fieldErrors: {},
       error: "",
-      success: "",
       saving: false,
     };
   },
@@ -28,7 +27,6 @@ export default {
   methods: {
     async submitForm() {
       this.error = "";
-      this.success = "";
       this.fieldErrors = {};
 
       if (this.form.new_password && this.form.new_password !== this.form.confirm_password) {
@@ -46,7 +44,7 @@ export default {
       try {
         const { data } = await api.put("/user/profile", payload);
         setCurrentUser(data.user);
-        this.success = "Profile updated successfully.";
+        window.showToast("Profile updated successfully.", "success");
         this.form.current_password = "";
         this.form.new_password = "";
         this.form.confirm_password = "";
@@ -68,7 +66,6 @@ export default {
 
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <div v-if="success" class="alert alert-success py-2">{{ success }}</div>
             <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
 
             <form @submit.prevent="submitForm">

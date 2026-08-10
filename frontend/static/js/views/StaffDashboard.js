@@ -117,14 +117,21 @@ export default {
       }
     },
     async cancelParticipant(booking) {
-      if (!confirm(`Cancel ${booking.username}'s booking for this trek?`)) return;
+      const confirmed = await window.showConfirm(
+        `Cancel ${booking.username}'s booking for this trek?`
+      );
+      if (!confirmed) return;
       this.cancellingId = booking.id;
       try {
         await api.post(`/staff/treks/${this.participantsTrek.id}/participants/${booking.id}/cancel`);
+        window.showToast(`${booking.username}'s booking cancelled.`, "warning");
         await this.openParticipants(this.participantsTrek);
         await Promise.all([this.fetchTreks(), this.fetchDashboard()]);
       } catch (err) {
-        alert(err.response?.data?.message || "Could not cancel this booking.");
+        window.showToast(
+          err.response?.data?.message || "Could not cancel this booking.",
+          "danger"
+        );
       } finally {
         this.cancellingId = null;
       }

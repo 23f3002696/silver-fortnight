@@ -49,12 +49,22 @@ export default {
     },
     async toggleActive(user) {
       const verb = user.is_active ? "blacklist" : "reactivate";
-      if (!confirm(`Are you sure you want to ${verb} "${user.username}"?`)) return;
+      const confirmed = await window.showConfirm(
+        `Are you sure you want to ${verb} "${user.username}"?`
+      );
+      if (!confirmed) return;
       try {
         await api.post(`/admin/users/${user.id}/toggle-active`);
+        window.showToast(
+          `"${user.username}" ${user.is_active ? "blacklisted" : "reactivated"}.`,
+          "success"
+        );
         await this.fetchUsers();
       } catch (err) {
-        alert(err.response?.data?.message || "Could not update this user.");
+        window.showToast(
+          err.response?.data?.message || "Could not update this user.",
+          "danger"
+        );
       }
     },
     formatDate(value) {
