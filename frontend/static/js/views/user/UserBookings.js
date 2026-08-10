@@ -56,7 +56,7 @@ export default {
         const { data } = await api.get("/user/bookings", { params });
         this.bookings = data.bookings;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load your trekking history.";
+        this.error = err.response?.data?.message || "We couldn't load your trekking history.";
       } finally {
         this.loading = false;
       }
@@ -71,17 +71,17 @@ export default {
     },
     async cancelBooking(booking) {
       const confirmed = await window.showConfirm(
-        `Cancel your booking for "${booking.trek_name}"?`
+        `Give up your spot on "${booking.trek_name}"? This booking will be cancelled.`
       );
       if (!confirmed) return;
       this.cancellingId = booking.id;
       try {
         await api.post(`/user/bookings/${booking.id}/cancel`);
-        window.showToast("Booking cancelled.", "warning");
+        window.showToast("Your booking was cancelled. Hope to see you on another trail soon.", "warning");
         await this.fetchBookings();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not cancel this booking.",
+          err.response?.data?.message || "We couldn't cancel this booking. Please try again.",
           "danger"
         );
       } finally {
@@ -119,7 +119,7 @@ export default {
         await this.downloadCsv(taskId);
         this.exporting = false;
         this.exportStatus = "ready";
-        this.exportMessage = "Download started \u2014 we also emailed you a confirmation.";
+        this.exportMessage = "Your download has started \u2014 we've also emailed you a copy.";
         window.showToast(this.exportMessage, "success");
       } catch (err) {
         this.exporting = false;
@@ -224,12 +224,15 @@ export default {
   template: `
     <div>
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-        <h1 class="h4 mb-0">My Bookings</h1>
+        <div>
+          <h1 class="h4 mb-0">My Bookings</h1>
+          <p class="text-muted small mb-0">Track every reservation, settle payments and export your trail record.</p>
+        </div>
         <div class="text-end">
           <button class="btn btn-sm btn-outline-primary" :disabled="exporting" @click="exportCsv">
             <span v-if="exporting" class="spinner-border spinner-border-sm me-1" role="status"></span>
             <i v-else class="bi bi-file-earmark-arrow-down me-1"></i>
-            {{ exporting ? "Preparing export..." : "Export CSV" }}
+            {{ exporting ? "Preparing your file..." : "Export CSV" }}
           </button>
           <div v-if="exportStatus === 'ready'" class="small text-success mt-1">{{ exportMessage }}</div>
           <div v-if="exportStatus === 'error'" class="small text-danger mt-1">{{ exportMessage }}</div>
@@ -250,7 +253,7 @@ export default {
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="bookings.length === 0" class="p-4 text-secondary text-center">
-          No bookings yet. Head over to Browse Treks to plan your next adventure.
+          No bookings yet &mdash; head over to Explore Treks and plan your next adventure.
         </div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
@@ -315,15 +318,15 @@ export default {
           <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 pb-0">
               <h5 class="modal-title">
-                <i class="bi bi-credit-card me-2 text-success"></i>Complete Payment
+                <i class="bi bi-credit-card me-2 text-success"></i>Secure your spot
               </h5>
               <button type="button" class="btn-close" aria-label="Close" @click="closePayment"></button>
             </div>
             <div class="modal-body">
               <p class="text-muted small mb-3">
-                Paying for <strong>{{ payment.booking?.trek_name }}</strong>.
+                You're paying for <strong>{{ payment.booking?.trek_name }}</strong>.
                 This is a <strong>payment simulation</strong> &mdash; no real money is charged.
-                Use any 16-digit card number; a card ending in <code>0000</code> simulates a declined payment.
+                Any 16-digit card number works; a card ending in <code>0000</code> simulates a declined payment.
               </p>
 
               <form @submit.prevent="submitPayment">
@@ -381,7 +384,7 @@ export default {
               <button class="btn btn-outline-secondary" :disabled="payment.paying" @click="closePayment">Cancel</button>
               <button class="btn btn-success" :disabled="payment.paying" @click="submitPayment">
                 <span v-if="payment.paying" class="spinner-border spinner-border-sm me-1" role="status"></span>
-                {{ payment.paying ? "Processing..." : "Pay Now" }}
+                {{ payment.paying ? "Processing..." : "Pay & confirm" }}
               </button>
             </div>
           </div>

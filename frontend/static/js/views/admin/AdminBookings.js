@@ -35,7 +35,7 @@ export default {
         const { data } = await api.get("/admin/bookings", { params });
         this.bookings = data.bookings;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load booking records.";
+        this.error = err.response?.data?.message || "We couldn't load the booking records.";
       } finally {
         this.loading = false;
       }
@@ -51,7 +51,8 @@ export default {
   },
   template: `
     <div>
-      <h1 class="h4 mb-3">All Booking Records</h1>
+      <h1 class="h4 mb-1">All Bookings</h1>
+      <p class="text-muted small mb-3">Every reservation across all treks &mdash; search by trekker or trail.</p>
 
       <div class="toolbar row g-2 mb-3">
         <div class="col-12 col-md-8">
@@ -80,7 +81,7 @@ export default {
       </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
-        <div v-if="bookings.length === 0" class="p-4 text-secondary text-center">No bookings found.</div>
+        <div v-if="bookings.length === 0" class="p-4 text-secondary text-center">No bookings found &mdash; reservations will appear here as trekkers sign up.</div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
             <thead class="border-bottom">

@@ -56,7 +56,7 @@ export default {
         const { data } = await api.post("/admin/reports/monthly/run");
         this.reportMessage = data.message;
       } catch (err) {
-        this.reportError = err.response?.data?.message || "Could not trigger the report.";
+        this.reportError = err.response?.data?.message || "We couldn't trigger the report. Please try again.";
       } finally {
         this.runningReport = false;
       }
@@ -65,12 +65,15 @@ export default {
   template: `
     <div>
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
-        <h1 class="h4 mb-0">Admin Dashboard</h1>
+        <div>
+          <h1 class="h4 mb-0">Admin Dashboard</h1>
+          <p class="text-muted small mb-0">The pulse of Silver Fortnight &mdash; treks, people and bookings at a glance.</p>
+        </div>
         <div class="text-end">
           <button class="btn btn-sm btn-outline-secondary" :disabled="runningReport" @click="runMonthlyReport">
             <span v-if="runningReport" class="spinner-border spinner-border-sm me-1" role="status"></span>
             <i v-else class="bi bi-envelope me-1"></i>
-            {{ runningReport ? "Sending..." : "Send Monthly Report" }}
+            {{ runningReport ? "Sending..." : "Send monthly report" }}
           </button>
           <div v-if="reportMessage" class="small text-success mt-1">{{ reportMessage }}</div>
           <div v-if="reportError" class="small text-danger mt-1">{{ reportError }}</div>
@@ -103,7 +106,7 @@ export default {
             <div class="stat-card">
               <span class="stat-icon chip-orange mb-2"><i class="bi bi-person-badge"></i></span>
               <div class="stat-value">{{ stats.total_staff }}</div>
-              <div class="stat-label">Trek Staff</div>
+              <div class="stat-label">Trek staff</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
@@ -116,8 +119,8 @@ export default {
         </div>
 
         <div class="border rounded p-4 mt-4">
-          <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2 text-primary"></i>Trek Status Breakdown</h6>
-          <div v-if="stats.total_treks === 0" class="text-secondary small">No treks created yet.</div>
+          <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2 text-primary"></i>Where your treks stand</h6>
+          <div v-if="stats.total_treks === 0" class="text-secondary small">No treks yet &mdash; create your first trek to get the trail moving.</div>
           <div v-else>
             <div v-for="row in statusBreakdown" :key="row.status" class="mb-3">
               <div class="d-flex justify-content-between small mb-1">

@@ -44,7 +44,7 @@ export default {
       try {
         const { data } = await api.put("/user/profile", payload);
         setCurrentUser(data.user);
-        window.showToast("Profile updated successfully.", "success");
+        window.showToast("Your profile is up to date.", "success");
         this.form.current_password = "";
         this.form.new_password = "";
         this.form.confirm_password = "";
@@ -52,7 +52,7 @@ export default {
         const data = err.response?.data;
         this.fieldErrors = data?.errors || {};
         if (!data?.errors) {
-          this.error = data?.message || "Could not update your profile.";
+          this.error = data?.message || "We couldn't update your profile. Please try again.";
         }
       } finally {
         this.saving = false;
@@ -63,6 +63,7 @@ export default {
     <div class="row justify-content-center">
       <div class="col-12 col-md-8 col-lg-6">
         <h1 class="h4 mb-3">My Profile</h1>
+        <p class="text-muted small mb-3">Keep your trail identity up to date &mdash; this is how the trek team reaches you.</p>
 
         <div class="card shadow-sm">
           <div class="card-body p-4 p-md-5">
@@ -107,7 +108,7 @@ export default {
                   type="password"
                   class="form-control"
                   :class="{ 'is-invalid': fieldErrors.current_password }"
-                  placeholder="Required only if changing your password"
+                  placeholder="Only needed when changing your password"
                 />
                 <div class="invalid-feedback">{{ fieldErrors.current_password }}</div>
               </div>

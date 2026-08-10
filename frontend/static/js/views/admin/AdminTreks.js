@@ -78,7 +78,7 @@ export default {
         const { data } = await api.get("/admin/treks", { params });
         this.treks = data.treks;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load treks.";
+        this.error = err.response?.data?.message || "We couldn't load the trek list.";
       } finally {
         this.loading = false;
       }
@@ -140,7 +140,7 @@ export default {
         const data = err.response?.data;
         this.formErrors = data?.errors || {};
         if (!data?.errors) {
-          this.formErrors._general = data?.message || "Could not save this trek.";
+          this.formErrors._general = data?.message || "We couldn't save this trek. Please review the details and try again.";
         }
       } finally {
         this.saving = false;
@@ -148,7 +148,7 @@ export default {
     },
     async deleteTrek(trek) {
       const confirmed = await window.showConfirm(
-        `Delete "${trek.name}"? This cannot be undone.`
+        `Delete "${trek.name}" from the map? This can't be undone.`
       );
       if (!confirmed) return;
       try {
@@ -157,7 +157,7 @@ export default {
         await this.fetchTreks();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not delete this trek.",
+          err.response?.data?.message || "We couldn't delete this trek.",
           "danger"
         );
       }
@@ -176,7 +176,7 @@ export default {
         const { data } = await api.get("/admin/bookings", { params: { trek_id: trek.id } });
         this.historyBookings = data.bookings;
       } catch (err) {
-        this.historyError = err.response?.data?.message || "Could not load booking history for this trek.";
+        this.historyError = err.response?.data?.message || "We couldn't load the booking history for this trek.";
       } finally {
         this.historyLoading = false;
       }
@@ -185,7 +185,10 @@ export default {
   template: `
     <div>
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h4 mb-0">Treks</h1>
+        <div>
+          <h1 class="h4 mb-0">Treks</h1>
+          <p class="text-muted small mb-0">Create, assign and curate every trail on offer.</p>
+        </div>
         <button class="btn btn-primary btn-sm" @click="openCreateModal">
           <i class="bi bi-plus-lg me-1"></i>New Trek
         </button>
@@ -200,7 +203,7 @@ export default {
               @input="onSearchInput"
               type="search"
               class="form-control"
-              placeholder="Search by name or location..."
+              placeholder="Search by trek name or destination..."
             />
           </div>
         </div>
@@ -225,7 +228,7 @@ export default {
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
-          No treks found. Try adjusting your search or create a new trek.
+          No treks match your search &mdash; adjust the filters or put a new trek on the map.
         </div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
@@ -259,7 +262,7 @@ export default {
                 </td>
                 <td>{{ trek.bookings_count }}</td>
                 <td class="text-center" style="white-space: nowrap;">
-                  <button class="btn btn-sm btn-outline-secondary me-1" @click="openHistory(trek)" title="Booking history">
+                  <button class="btn btn-sm btn-outline-secondary me-1" @click="openHistory(trek)" title="View booking history">
                     <i class="bi bi-clock-history"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Edit trek">
@@ -366,7 +369,7 @@ export default {
 
                   <div class="col-12">
                     <label class="form-label">Description</label>
-                    <textarea v-model.trim="form.description" class="form-control" rows="3"></textarea>
+                    <textarea v-model.trim="form.description" class="form-control" rows="3" placeholder="Tell trekkers what makes this trail special..."></textarea>
                   </div>
                 </div>
               </div>
@@ -398,7 +401,7 @@ export default {
               </div>
               <div v-else-if="historyError" class="alert alert-danger">{{ historyError }}</div>
               <div v-else-if="historyBookings.length === 0" class="text-secondary text-center p-3">
-                No trekkers have ever booked this trek.
+                No trekkers have booked this trek yet.
               </div>
               <div v-else class="table-responsive">
                 <table class="table table-borderless mb-0 align-middle">

@@ -34,7 +34,7 @@ export default {
         const { data } = await api.get("/admin/staff", { params });
         this.staff = data.staff;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load Trek Staff.";
+        this.error = err.response?.data?.message || "We couldn't load the trek staff.";
       } finally {
         this.loading = false;
       }
@@ -59,7 +59,7 @@ export default {
         const data = err.response?.data;
         this.formErrors = data?.errors || {};
         if (!data?.errors) {
-          this.formErrors._general = data?.message || "Could not create this Trek Staff account.";
+          this.formErrors._general = data?.message || "We couldn't create this Trek Staff account.";
         }
       } finally {
         this.saving = false;
@@ -75,14 +75,14 @@ export default {
         await this.fetchStaff();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not update this staff member.",
+          err.response?.data?.message || "We couldn't update this staff member.",
           "danger"
         );
       }
     },
     async deleteStaff(member) {
       const confirmed = await window.showConfirm(
-        `Remove Trek Staff "${member.username}"? This cannot be undone.`
+        `Remove Trek Staff "${member.username}"? This can't be undone.`
       );
       if (!confirmed) return;
       try {
@@ -91,7 +91,7 @@ export default {
         await this.fetchStaff();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not remove this staff member.",
+          err.response?.data?.message || "We couldn't remove this staff member.",
           "danger"
         );
       }
@@ -100,7 +100,10 @@ export default {
   template: `
     <div>
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h4 mb-0">Trek Staff</h1>
+        <div>
+          <h1 class="h4 mb-0">Trek Staff</h1>
+          <p class="text-muted small mb-0">The crew that leads your treks &mdash; add members and assign them to trails.</p>
+        </div>
         <button class="btn btn-primary btn-sm" @click="openCreateModal">
           <i class="bi bi-person-plus me-1"></i>Add Staff
         </button>
@@ -125,7 +128,7 @@ export default {
       </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
-        <div v-if="staff.length === 0" class="p-4 text-secondary text-center">No trek staff found.</div>
+        <div v-if="staff.length === 0" class="p-4 text-secondary text-center">No trek staff found. Add your first staff member to start assigning treks.</div>
         <div
           v-for="member in staff"
           :key="member.id"
@@ -176,7 +179,7 @@ export default {
               <div class="modal-body">
                 <div v-if="formErrors._general" class="alert alert-danger py-2">{{ formErrors._general }}</div>
                 <p class="text-muted small">
-                  Trek Staff can only log in &mdash; there is no self-registration for this role.
+                  Trek Staff accounts are invite-only &mdash; members can sign in but can't register themselves.
                 </p>
                 <div class="mb-3">
                   <label class="form-label">Username</label>

@@ -33,7 +33,7 @@ export default {
         const { data } = await api.get("/admin/analytics");
         this.stats = data;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load the analytics.";
+        this.error = err.response?.data?.message || "We couldn't load the analytics.";
       } finally {
         this.loading = false;
       }
@@ -169,7 +169,7 @@ export default {
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
         <div>
           <h1 class="h4 mb-0">Reports &amp; Analytics</h1>
-          <p class="text-muted small mb-0">Trekking statistics, booking trends and monthly participation.</p>
+          <p class="text-muted small mb-0">How your trails are performing &mdash; booking trends and monthly participation.</p>
         </div>
         <button class="btn btn-sm btn-outline-secondary" :disabled="loading" @click="fetchStats">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -195,21 +195,21 @@ export default {
             <div class="stat-card">
               <span class="stat-icon chip-purple mb-2"><i class="bi bi-flag"></i></span>
               <div class="stat-value">{{ stats.completed_treks }}</div>
-              <div class="stat-label">Treks Completed</div>
+              <div class="stat-label">Treks completed</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <div class="stat-card">
               <span class="stat-icon chip-green mb-2"><i class="bi bi-people"></i></span>
               <div class="stat-value">{{ stats.total_participants }}</div>
-              <div class="stat-label">Unique Participants</div>
+              <div class="stat-label">Unique participants</div>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <div class="stat-card">
               <span class="stat-icon chip-blue mb-2"><i class="bi bi-bookmark-check"></i></span>
               <div class="stat-value">{{ stats.bookings_by_status.booked || 0 }}</div>
-              <div class="stat-label">Active Bookings</div>
+              <div class="stat-label">Active bookings</div>
             </div>
           </div>
         </div>
@@ -218,14 +218,14 @@ export default {
           <div class="col-lg-8">
             <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Monthly Booking &amp; Participation Trend</h6>
-              <p class="text-muted small mb-3">Last 12 months &mdash; bookings made and unique participants per month.</p>
+              <p class="text-muted small mb-3">Bookings made and unique participants per month over the last 12 months.</p>
               <div style="height: 280px;"><canvas ref="trendCanvas"></canvas></div>
             </div>
           </div>
           <div class="col-lg-4">
             <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Bookings by Status</h6>
-              <p class="text-muted small mb-3">All-time booking outcomes.</p>
+              <p class="text-muted small mb-3">How every booking ended up, all-time.</p>
               <div style="height: 280px;"><canvas ref="statusCanvas"></canvas></div>
             </div>
           </div>
@@ -234,10 +234,10 @@ export default {
         <div class="row g-3 mt-1">
           <div class="col-lg-7">
             <div class="border rounded p-4 h-100">
-              <h6 class="fw-semibold mb-1">Most Popular Treks</h6>
-              <p class="text-muted small mb-3">Top 5 treks ranked by non-cancelled bookings.</p>
+              <h6 class="fw-semibold mb-1">Trending Treks</h6>
+              <p class="text-muted small mb-3">Top 5 treks ranked by confirmed bookings.</p>
               <div v-if="stats.popular_treks.length === 0" class="text-secondary small">
-                No bookings recorded yet.
+                No bookings yet &mdash; the charts will light up once trekkers sign up.
               </div>
               <div v-else :style="{ height: Math.max(180, stats.popular_treks.length * 44) + 'px' }">
                 <canvas ref="popularCanvas"></canvas>
@@ -247,7 +247,7 @@ export default {
           <div class="col-lg-5">
             <div class="border rounded p-4 h-100">
               <h6 class="fw-semibold mb-1">Top Participants</h6>
-              <p class="text-muted small mb-3">Trekkers with the most non-cancelled bookings.</p>
+              <p class="text-muted small mb-3">Your most seasoned trekkers, ranked by confirmed bookings.</p>
               <div v-if="stats.top_participants.length === 0" class="text-secondary small">
                 No participant activity yet.
               </div>
@@ -275,7 +275,7 @@ export default {
           <div class="col-lg-4">
             <div class="border rounded p-4">
               <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
-              <p class="text-muted small mb-3">Non-cancelled bookings grouped by trek difficulty.</p>
+              <p class="text-muted small mb-3">Confirmed bookings grouped by how tough the trail is.</p>
               <div style="height: 240px;"><canvas ref="difficultyCanvas"></canvas></div>
             </div>
           </div>

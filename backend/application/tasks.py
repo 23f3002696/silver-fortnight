@@ -25,10 +25,10 @@ def _export_dir():
 
 REMINDER_TEMPLATE = """
 <h3>Hi {{ username }},</h3>
-<p>This is a reminder that your trek <strong>{{ trek_name }}</strong> starts on
-<strong>{{ start_date }}</strong> ({{ days_left }} day(s) from now).</p>
+<p>Pack your bags &mdash; your trek <strong>{{ trek_name }}</strong> kicks off on
+<strong>{{ start_date }}</strong>, just {{ days_left }} day(s) from now!</p>
 <p>Location: {{ location }}<br>Difficulty: {{ difficulty }}</p>
-<p>Please pack accordingly and reach the meeting point on time. Happy trekking!</p>
+<p>Pack accordingly and reach the meeting point on time. See you on the trail!</p>
 <p>&mdash; Silver Fortnight Trekking Team</p>
 """
 
@@ -57,7 +57,7 @@ def send_trek_reminders(days_ahead=None):
                 difficulty=trek.difficulty,
             )
             try:
-                send_email(user.email, subject=f"Reminder: {trek.name} starts soon", message=html)
+                send_email(user.email, subject=f"Heads up: {trek.name} starts soon!", message=html)
                 reminders_sent += 1
             except Exception:
                 logger.exception(
@@ -70,19 +70,19 @@ def send_trek_reminders(days_ahead=None):
 
 
 MONTHLY_REPORT_TEMPLATE = """
-<h2>Monthly Trekking Activity Report</h2>
-<p>Period: {{ period_label }}</p>
+<h2>Monthly Trail Report</h2>
+<p>Period covered: {{ period_label }}</p>
 <ul>
-  <li>Treks conducted (completed): {{ treks_conducted }}</li>
-  <li>Participants: {{ participants }}</li>
+  <li>Treks completed: {{ treks_conducted }}</li>
+  <li>Trekkers on the trail: {{ participants }}</li>
 </ul>
-<h3>Popular Treks</h3>
+<h3>Trending Treks</h3>
 <table border="1" cellpadding="6" cellspacing="0">
   <tr><th>Trek Name</th><th>Bookings</th></tr>
   {% for trek in popular_treks %}
   <tr><td>{{ trek.name }}</td><td>{{ trek.count }}</td></tr>
   {% else %}
-  <tr><td colspan="2">No bookings in this period.</td></tr>
+  <tr><td colspan="2">No bookings recorded in this period.</td></tr>
   {% endfor %}
 </table>
 <p>&mdash; Silver Fortnight Trekking Team</p>
@@ -149,7 +149,7 @@ def send_monthly_report():
     delivered = 0
     for admin in admins:
         try:
-            send_email(admin.email, subject="Monthly Trekking Activity Report", message=html)
+            send_email(admin.email, subject="Monthly Trail Report", message=html)
             delivered += 1
         except Exception:
             logger.exception(
@@ -201,11 +201,11 @@ def export_user_bookings_csv(user_id):
     try:
         send_email(
             user.email,
-            subject="Your trekking history export is ready",
+            subject="Your trail record is ready",
             message=(
                 f"<p>Hi {user.username},</p>"
-                "<p>Your trekking history CSV export has finished processing and is "
-                "ready to download from the app.</p>"
+                "<p>Your trekking history export has finished processing and is "
+                "ready to download from the app. Happy trails!</p>"
             ),
         )
     except Exception:

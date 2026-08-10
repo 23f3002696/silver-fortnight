@@ -118,13 +118,13 @@ export default {
     },
     async cancelParticipant(booking) {
       const confirmed = await window.showConfirm(
-        `Cancel ${booking.username}'s booking for this trek?`
+        `Cancel ${booking.username}'s spot on this trek? They'll be notified by email.`
       );
       if (!confirmed) return;
       this.cancellingId = booking.id;
       try {
         await api.post(`/staff/treks/${this.participantsTrek.id}/participants/${booking.id}/cancel`);
-        window.showToast(`${booking.username}'s booking cancelled.`, "warning");
+        window.showToast(`${booking.username}'s booking was cancelled and the trekker notified.`, "warning");
         await this.openParticipants(this.participantsTrek);
         await Promise.all([this.fetchTreks(), this.fetchDashboard()]);
       } catch (err) {
@@ -139,7 +139,8 @@ export default {
   },
   template: `
     <div>
-      <h1 class="h4 mb-4">Trek Staff Dashboard</h1>
+      <h1 class="h4 mb-1">Trek Staff Dashboard</h1>
+      <p class="text-muted small mb-4">Manage slots, statuses and participants for the treks assigned to you.</p>
 
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
@@ -148,34 +149,34 @@ export default {
           <div class="stat-card">
             <span class="stat-icon chip-blue mb-2"><i class="bi bi-map"></i></span>
             <div class="stat-value">{{ stats.assigned_treks }}</div>
-            <div class="stat-label">Assigned Treks</div>
+            <div class="stat-label">Treks assigned</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card">
             <span class="stat-icon chip-green mb-2"><i class="bi bi-people"></i></span>
             <div class="stat-value">{{ stats.total_registered_trekkers }}</div>
-            <div class="stat-label">Registered Trekkers</div>
+            <div class="stat-label">Trekkers signed up</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card">
             <span class="stat-icon chip-orange mb-2"><i class="bi bi-ticket-perforated"></i></span>
             <div class="stat-value">{{ stats.total_available_slots }}</div>
-            <div class="stat-label">Available Slots</div>
+            <div class="stat-label">Open slots</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card">
             <span class="stat-icon chip-pink mb-2"><i class="bi bi-signpost-2"></i></span>
             <div class="stat-value">{{ stats.treks_by_status.open || 0 }}</div>
-            <div class="stat-label">Open Treks</div>
+            <div class="stat-label">Treks open for booking</div>
           </div>
         </div>
       </div>
 
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="h5 mb-0">My Treks</h2>
+        <h2 class="h5 mb-0">Your assigned treks</h2>
       </div>
 
       <div v-if="loading" class="loading-box">
@@ -184,7 +185,7 @@ export default {
       </div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
-          No treks assigned yet. You'll see them here once an admin assigns one to you.
+          No treks assigned yet &mdash; once an admin places you on a trek, it will show up here.
         </div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
@@ -213,10 +214,10 @@ export default {
                 <td><span class="badge text-capitalize" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
                 <td>{{ trek.active_bookings_count }}</td>
                 <td class="text-center" style="white-space: nowrap;">
-                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Update slots and status">
+                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Edit slots and status">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" @click="openParticipants(trek)" title="View participants">
+                  <button class="btn btn-sm btn-outline-secondary" @click="openParticipants(trek)" title="View trek participants">
                     <i class="bi bi-people"></i>
                   </button>
                 </td>
@@ -231,7 +232,7 @@ export default {
           <div class="modal-content">
             <form @submit.prevent="submitEdit">
               <div class="modal-header">
-                <h5 class="modal-title">Update Trek</h5>
+                <h5 class="modal-title">Edit Trek</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body" v-if="editingTrek">
@@ -241,7 +242,7 @@ export default {
                 <div v-if="editErrors._general" class="alert alert-danger py-2">{{ editErrors._general }}</div>
 
                 <div class="mb-3">
-                  <label class="form-label">Available Slots</label>
+                  <label class="form-label">Open Slots</label>
                   <input
                     v-model.number="editForm.available_slots"
                     type="number"
@@ -258,7 +259,7 @@ export default {
                     <option v-for="s in editableStatuses" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
                   </select>
                   <div class="invalid-feedback">{{ editErrors.status }}</div>
-                  <div class="form-text">Marking a trek as "Completed" also closes out any still-booked reservations.</div>
+                  <div class="form-text">Marking a trek as "Completed" also marks every remaining booking on it as completed.</div>
                 </div>
               </div>
               <div class="modal-footer">
@@ -289,7 +290,7 @@ export default {
               </div>
               <div v-else-if="participantsError" class="alert alert-danger">{{ participantsError }}</div>
               <div v-else-if="participants.length === 0" class="text-secondary text-center p-3">
-                No trekkers have booked this trek yet.
+                No trekkers on this trek yet &mdash; bookings will appear here as they come in.
               </div>
               <div v-else class="table-responsive">
                 <table class="table table-borderless mb-0 align-middle">

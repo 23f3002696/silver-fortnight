@@ -120,7 +120,7 @@ const App = {
                 </li>
                 <li class="nav-item">
                   <router-link class="nav-link" to="/user/treks" active-class="active">
-                    <i class="bi bi-compass me-1"></i>Browse Treks
+                    <i class="bi bi-compass me-1"></i>Explore Treks
                   </router-link>
                 </li>
                 <li class="nav-item">
@@ -142,10 +142,10 @@ const App = {
                   </router-link>
                 </li>
                 <li class="nav-item">
-                  <router-link class="nav-link" to="/login" active-class="active">Login</router-link>
+                  <router-link class="nav-link" to="/login" active-class="active">Sign in</router-link>
                 </li>
                 <li class="nav-item">
-                  <router-link class="nav-link" to="/register" active-class="active">Register</router-link>
+                  <router-link class="nav-link" to="/register" active-class="active">Sign up</router-link>
                 </li>
               </template>
             </ul>
@@ -161,7 +161,7 @@ const App = {
                 </span>
               </span>
               <button v-if="authState.user" class="btn btn-sm btn-outline-danger" @click="handleLogout">
-                <i class="bi bi-box-arrow-right me-1"></i>Logout
+                <i class="bi bi-box-arrow-right me-1"></i>Sign out
               </button>
             </div>
           </div>

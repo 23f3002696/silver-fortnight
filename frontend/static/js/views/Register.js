@@ -83,9 +83,10 @@ export default {
               <span class="stat-icon chip-green d-block mx-auto mb-3" style="width:3rem;height:3rem;font-size:1.3rem;">
                 <i class="bi bi-person-plus"></i>
               </span>
-              <h1 class="h5 mb-1">Create your trekker account</h1>
+              <h1 class="h5 mb-1">Join the community</h1>
               <p class="text-muted small mb-0">
-                Trek staff and admin accounts are created separately.
+                Create your trekker account in under a minute. Trek staff and
+                admin accounts are created by an administrator.
               </p>
             </div>
 
@@ -168,12 +169,12 @@ export default {
 
               <button type="submit" class="btn btn-primary w-100" :disabled="loading">
                 <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ loading ? "Creating account..." : "Create account" }}
+                {{ loading ? "Creating account..." : "Join Silver Fortnight" }}
               </button>
             </form>
 
             <p class="text-center small mt-4 mb-0">
-              Already have an account?
+              Already part of the community?
               <router-link to="/login">Sign in</router-link>
             </p>
           </div>

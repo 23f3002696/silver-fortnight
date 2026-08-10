@@ -40,8 +40,8 @@ export default {
               <span class="stat-icon chip-green d-block mx-auto mb-3" style="width:3rem;height:3rem;font-size:1.3rem;">
                 <i class="bi bi-box-arrow-in-right"></i>
               </span>
-              <h1 class="h5 mb-1">Sign in</h1>
-              <p class="text-muted small mb-0">Trekkers, trek staff and admins all sign in here.</p>
+              <h1 class="h5 mb-1">Welcome back</h1>
+              <p class="text-muted small mb-0">One trailhead for everyone &mdash; trekkers, trek staff and admins sign in here.</p>
             </div>
 
             <div v-if="error" class="alert alert-danger py-2 small">{{ error }}</div>
@@ -76,7 +76,7 @@ export default {
             </form>
 
             <p class="text-center small mt-4 mb-0">
-              New trekker?
+              New to the trail?
               <router-link to="/register">Create an account</router-link>
             </p>
           </div>

@@ -64,11 +64,11 @@ export default {
       this.bookingId = trek.id;
       try {
         const { data } = await api.post(`/user/treks/${trek.id}/book`);
-        window.showToast(data.message || "Trek booked successfully!", "success");
+        window.showToast(data.message || "You're booked! See you on the trail.", "success");
         await this.fetchTreks();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not book this trek.",
+          err.response?.data?.message || "We couldn't book this trek. Please try again.",
           "danger"
         );
       } finally {
@@ -79,7 +79,10 @@ export default {
   template: `
     <div>
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h4 mb-0">Browse Treks</h1>
+        <div>
+          <h1 class="h4 mb-0">Explore Treks</h1>
+          <p class="text-muted small mb-0">Find the trail that fits your appetite &mdash; filter by difficulty and duration.</p>
+        </div>
       </div>
 
       <div class="toolbar row g-2 mb-3">
@@ -91,7 +94,7 @@ export default {
               @input="onSearchInput"
               type="search"
               class="form-control"
-              placeholder="Search by name or location..."
+              placeholder="Search by trek name or destination..."
             />
           </div>
         </div>
@@ -125,12 +128,12 @@ export default {
 
       <div v-if="loading" class="loading-box">
         <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-        Loading treks&hellip;
+        Loading the trail list&hellip;
       </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
         <div v-if="treks.length === 0" class="p-4 text-secondary text-center">
-          No treks match your search right now. Try adjusting your filters.
+          No trails match your search &mdash; widen your filters to discover more treks.
         </div>
         <div v-else class="table-responsive">
           <table class="table table-borderless mb-0 align-middle">
@@ -159,17 +162,17 @@ export default {
                 <td>{{ trek.available_slots }}</td>
                 <td><span class="badge text-capitalize" :class="trekStatusBadge[trek.status]">{{ trek.status }}</span></td>
                 <td class="text-center" style="white-space: nowrap;">
-                  <span v-if="trek.user_booking_status === 'booked'" class="badge text-bg-info">Booked</span>
+                  <span v-if="trek.user_booking_status === 'booked'" class="badge text-bg-info">You're going</span>
                   <span v-else-if="trek.user_booking_status === 'completed'" class="badge text-bg-primary">Completed</span>
-                  <span v-else-if="trek.status !== 'open'" class="text-muted small">Not open yet</span>
-                  <span v-else-if="trek.available_slots <= 0" class="badge text-bg-secondary">Full</span>
+                  <span v-else-if="trek.status !== 'open'" class="text-muted small">Opens soon</span>
+                  <span v-else-if="trek.available_slots <= 0" class="badge text-bg-secondary">Fully booked</span>
                   <button
                     v-else
                     class="btn btn-sm btn-primary"
                     :disabled="bookingId === trek.id"
                     @click="bookTrek(trek)"
                   >
-                    <i class="bi bi-plus-circle me-1"></i>{{ bookingId === trek.id ? "Booking..." : "Book" }}
+                    <i class="bi bi-plus-circle me-1"></i>{{ bookingId === trek.id ? "Reserving..." : "Book now" }}
                   </button>
                 </td>
               </tr>

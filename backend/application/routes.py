@@ -39,7 +39,7 @@ def _send_booking_confirmation(user, trek):
     """Send a booking confirmation email. Failures are logged but never re-raised."""
     html = (
         f"<h3>Hi {user.username},</h3>"
-        f"<p>Your booking for <strong>{trek.name}</strong> has been confirmed!</p>"
+        f"<p>You're in! Your spot on <strong>{trek.name}</strong> is confirmed. Here's what's ahead:</p>"
         "<table cellpadding='6' style='border-collapse:collapse;'>"
         f"<tr><td><strong>Location:</strong></td><td>{trek.location or 'TBA'}</td></tr>"
         f"<tr><td><strong>Difficulty:</strong></td><td style='text-transform:capitalize'>{trek.difficulty}</td></tr>"
@@ -50,7 +50,7 @@ def _send_booking_confirmation(user, trek):
         "<p>See you on the trail! &mdash; Silver Fortnight Trekking Team</p>"
     )
     try:
-        send_email(user.email, subject=f"Booking Confirmed: {trek.name}", message=html)
+        send_email(user.email, subject=f"You're Booked: {trek.name}", message=html)
     except Exception:
         app.logger.exception("Failed to send booking confirmation email; booking still recorded.")
 
@@ -59,11 +59,11 @@ def _send_cancellation_notification(user, trek, cancelled_by="user"):
     """Send a cancellation notification email. Failures are logged but never re-raised."""
     if cancelled_by == "staff":
         reason = (
-            "<p>Your booking has been cancelled by the Trek Staff. "
-            "Please contact the administrator if you have any questions.</p>"
+            "<p>Your spot was released by the trek staff. "
+            "If you have any questions, an administrator is happy to help.</p>"
         )
     else:
-        reason = "<p>You have successfully cancelled your booking.</p>"
+        reason = "<p>Your booking was cancelled at your request. Hope to see you on another trail soon.</p>"
     html = (
         f"<h3>Hi {user.username},</h3>"
         f"<p>Your booking for <strong>{trek.name}</strong> has been cancelled.</p>"
@@ -82,9 +82,9 @@ def role_required(*roles):
         @wraps(func)
         def decorator(*args, **kwargs):
             if current_user is None or not current_user.is_active:
-                return jsonify(message="Your account is inactive. Contact an administrator."), 403
+                return jsonify(message="Your account is currently inactive — contact an administrator for help."), 403
             if current_user.role not in roles:
-                return jsonify(message="You are not authorized to perform this action."), 403
+                return jsonify(message="You don't have permission to perform this action."), 403
             return func(*args, **kwargs)
         return decorator
     return wrapper
@@ -96,11 +96,11 @@ def _validate_registration_payload(data):
  
     errors = {}
     if not username or len(username) < 3:
-        errors["username"] = "Username is required and must be at least 3 characters."
+        errors["username"] = "Choose a username with at least 3 characters."
     if not email or not _EMAIL_RE.match(email):
-        errors["email"] = "A valid email address is required."
+        errors["email"] = "Please enter a valid email address."
     if not password or len(password) < 6:
-        errors["password"] = "Password is required and must be at least 6 characters."
+        errors["password"] = "Choose a password with at least 6 characters."
  
     return username, email, password, errors
 
@@ -109,12 +109,12 @@ def register():
     data = request.get_json(silent=True) or {}
     username, email, password, errors = _validate_registration_payload(data)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
  
     if User.query.filter_by(username=username).first():
-        return jsonify(message="That username is already taken."), 409
+        return jsonify(message="That username is already taken. Try another one."), 409
     if User.query.filter_by(email=email).first():
-        return jsonify(message="That email is already registered."), 409
+        return jsonify(message="That email is already registered. Try signing in instead."), 409
  
     user = User(username=username, email=email, role=Role.USER)
     user.set_password(password)
@@ -124,7 +124,7 @@ def register():
  
     access_token = create_access_token(identity=user, additional_claims={"role": user.role})
     return jsonify(
-        message="Registration successful.",
+        message="Welcome aboard — your account is ready!",
         access_token=access_token,
         user=user.to_dict(),
     ), 201
@@ -137,14 +137,14 @@ def login():
     password = data.get("password") or ""
  
     if not username or not password:
-        return jsonify(message="Username and password are required."), 400
+        return jsonify(message="Please enter both your username and password."), 400
  
     user = User.query.filter_by(username=username).one_or_none()
     if not user or not user.check_password(password):
-        return jsonify(message="Wrong username or password."), 401
+        return jsonify(message="We couldn't sign you in — please check your username and password."), 401
  
     if not user.is_active:
-        return jsonify(message="Your account has been deactivated. Contact an administrator."), 403
+        return jsonify(message="Your account has been deactivated — contact an administrator to reactivate it."), 403
  
     access_token = create_access_token(identity=user, additional_claims={"role": user.role})
     return jsonify(access_token=access_token, user=user.to_dict())
@@ -155,7 +155,7 @@ def login():
 def logout():
     jti = get_jwt()["jti"]
     jwt_blocklist.add(jti)
-    return jsonify(message="Successfully logged out.")
+    return jsonify(message="You're signed out. See you on the trail!")
  
  
 @app.route("/api/auth/me", methods=["GET"])
@@ -199,7 +199,7 @@ def _validate_trek_payload(data, partial=False):
     if not partial or "name" in data:
         name = (data.get("name") or "").strip()
         if not name:
-            errors["name"] = "Trek name is required."
+            errors["name"] = "Every trek needs a name."
         fields["name"] = name
 
     if not partial or "difficulty" in data:
@@ -221,7 +221,7 @@ def _validate_trek_payload(data, partial=False):
             if duration <= 0:
                 raise ValueError
         except (TypeError, ValueError):
-            errors["duration_days"] = "Duration must be a positive number of days."
+            errors["duration_days"] = "Duration must be at least one day."
         fields["duration_days"] = duration
 
     if not partial or "available_slots" in data:
@@ -231,7 +231,7 @@ def _validate_trek_payload(data, partial=False):
             if slots < 0:
                 raise ValueError
         except (TypeError, ValueError):
-            errors["available_slots"] = "Available slots must be zero or a positive number."
+            errors["available_slots"] = "Open slots must be zero or a positive number."
         fields["available_slots"] = slots
 
     if not partial or "location" in data:
@@ -244,7 +244,7 @@ def _validate_trek_payload(data, partial=False):
     if not partial or "end_date" in data:
         fields["end_date"] = _parse_date(data.get("end_date"))
     if fields.get("start_date") and fields.get("end_date") and fields["end_date"] < fields["start_date"]:
-        errors["end_date"] = "End date cannot be before the start date."
+        errors["end_date"] = "The end date can't fall before the start date."
 
     if not partial or "assigned_staff_id" in data:
         staff_id = data.get("assigned_staff_id")
@@ -255,11 +255,11 @@ def _validate_trek_payload(data, partial=False):
                 staff_id = int(staff_id)
             except (TypeError, ValueError):
                 staff_id = None
-                errors["assigned_staff_id"] = "Assigned staff must be a valid staff member."
+                errors["assigned_staff_id"] = "Please assign a valid staff member."
             if staff_id is not None:
                 staff = db.session.get(StaffProfile, staff_id)
                 if not staff:
-                    errors["assigned_staff_id"] = "Selected staff member was not found."
+                    errors["assigned_staff_id"] = "We couldn't find that staff member."
                 fields["assigned_staff_id"] = staff_id
             else:
                 fields["assigned_staff_id"] = None
@@ -310,13 +310,13 @@ def admin_create_trek():
     data = request.get_json(silent=True) or {}
     fields, errors = _validate_trek_payload(data)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
 
     trek = Trek(**fields)
     db.session.add(trek)
     db.session.commit()
     invalidate_trek_caches()
-    return jsonify(message="Trek created.", trek=_serialize_trek(trek)), 201
+    return jsonify(message="New trek created.", trek=_serialize_trek(trek)), 201
 
 
 @app.route("/api/admin/treks/<int:trek_id>", methods=["PUT"])
@@ -324,12 +324,12 @@ def admin_create_trek():
 def admin_update_trek(trek_id):
     trek = db.session.get(Trek, trek_id)
     if not trek:
-        return jsonify(message="Trek not found."), 404
+        return jsonify(message="We couldn't find that trek."), 404
 
     data = request.get_json(silent=True) or {}
     fields, errors = _validate_trek_payload(data, partial=True)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
 
     for key, value in fields.items():
         setattr(trek, key, value)
@@ -343,17 +343,17 @@ def admin_update_trek(trek_id):
 def admin_delete_trek(trek_id):
     trek = db.session.get(Trek, trek_id)
     if not trek:
-        return jsonify(message="Trek not found."), 404
+        return jsonify(message="We couldn't find that trek."), 404
     if trek.bookings:
         return jsonify(
-            message="This trek has booking history and cannot be deleted. "
-            "Set its status to Closed instead to preserve trekking records."
+            message="This trek has booking history, so it can't be deleted. "
+            "Set its status to Closed instead to preserve the trekking records."
         ), 409
 
     db.session.delete(trek)
     db.session.commit()
     invalidate_trek_caches()
-    return jsonify(message="Trek deleted.")
+    return jsonify(message="Trek removed from the map.")
 
 
 @app.route("/api/admin/staff", methods=["GET"])
@@ -375,11 +375,11 @@ def admin_create_staff():
     data = request.get_json(silent=True) or {}
     username, email, password, errors = _validate_registration_payload(data)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
     if User.query.filter_by(username=username).first():
-        return jsonify(message="That username is already taken."), 409
+        return jsonify(message="That username is already taken. Try another one."), 409
     if User.query.filter_by(email=email).first():
-        return jsonify(message="That email is already registered."), 409
+        return jsonify(message="That email is already registered. Try signing in instead."), 409
 
     staff_user = User(username=username, email=email, role=Role.STAFF)
     staff_user.set_password(password)
@@ -392,7 +392,7 @@ def admin_create_staff():
     db.session.commit()
     invalidate_staff_caches()
     return jsonify(
-        message="Trek Staff account created.", staff=_serialize_staff(staff_user.staff_profile)
+        message="New Trek Staff member added to the crew.", staff=_serialize_staff(staff_user.staff_profile)
     ), 201
 
 
@@ -401,7 +401,7 @@ def admin_create_staff():
 def admin_update_staff(staff_id):
     staff = db.session.get(StaffProfile, staff_id)
     if not staff:
-        return jsonify(message="Staff member not found."), 404
+        return jsonify(message="We couldn't find that staff member."), 404
 
     data = request.get_json(silent=True) or {}
     if "name" in data:
@@ -418,7 +418,7 @@ def admin_update_staff(staff_id):
 def admin_toggle_staff_active(staff_id):
     staff = db.session.get(StaffProfile, staff_id)
     if not staff:
-        return jsonify(message="Staff member not found."), 404
+        return jsonify(message="We couldn't find that staff member."), 404
 
     staff.user.is_active = not staff.user.is_active
     staff.status = StaffStatus.ACTIVE if staff.user.is_active else StaffStatus.DEACTIVATED
@@ -433,10 +433,10 @@ def admin_toggle_staff_active(staff_id):
 def admin_delete_staff(staff_id):
     staff = db.session.get(StaffProfile, staff_id)
     if not staff:
-        return jsonify(message="Staff member not found."), 404
+        return jsonify(message="We couldn't find that staff member."), 404
     if staff.assigned_treks:
         return jsonify(
-            message="This staff member is assigned to one or more treks. Reassign those treks first."
+            message="This staff member still leads one or more treks — reassign those treks first."
         ), 409
 
     db.session.delete(staff.user)
@@ -463,7 +463,7 @@ def admin_list_users():
 def admin_toggle_user_active(user_id):
     user = db.session.get(User, user_id)
     if not user or user.role != Role.USER:
-        return jsonify(message="User not found."), 404
+        return jsonify(message="We couldn't find that user."), 404
 
     user.is_active = not user.is_active
     db.session.commit()
@@ -512,7 +512,7 @@ def admin_list_bookings():
 @role_required(Role.ADMIN)
 def admin_trigger_monthly_report():
     task = send_monthly_report.delay()
-    return jsonify(message="Monthly report job triggered. Admins will receive it by email.", task_id=task.id), 202
+    return jsonify(message="Monthly report is on its way — admins will receive it by email shortly.", task_id=task.id), 202
 
 
 STAFF_EDITABLE_STATUSES = (TrekStatus.OPEN, TrekStatus.CLOSED, TrekStatus.COMPLETED)
@@ -543,7 +543,7 @@ def _validate_staff_trek_payload(data):
                 raise ValueError
             fields["available_slots"] = slots
         except (TypeError, ValueError):
-            errors["available_slots"] = "Available slots must be zero or a positive number."
+            errors["available_slots"] = "Open slots must be zero or a positive number."
 
     if "status" in data:
         status = (data.get("status") or "").strip().lower()
@@ -553,7 +553,7 @@ def _validate_staff_trek_payload(data):
             fields["status"] = status
 
     if not fields and not errors:
-        errors["_general"] = "Nothing to update."
+        errors["_general"] = "There's nothing to update."
 
     return fields, errors
 
@@ -563,7 +563,7 @@ def _validate_staff_trek_payload(data):
 def staff_dashboard():
     staff = _current_staff_profile()
     if not staff:
-        return jsonify(message="No staff profile found for this account."), 404
+        return jsonify(message="We couldn't find a staff profile for this account."), 404
 
     treks = staff.assigned_treks
     treks_by_status = {status: 0 for status in TrekStatus.ALL}
@@ -587,7 +587,7 @@ def staff_dashboard():
 def staff_list_treks():
     staff = _current_staff_profile()
     if not staff:
-        return jsonify(message="No staff profile found for this account."), 404
+        return jsonify(message="We couldn't find a staff profile for this account."), 404
 
     treks = sorted(staff.assigned_treks, key=lambda t: t.created_at, reverse=True)
     return jsonify(treks=[_serialize_trek(t) for t in treks])
@@ -603,7 +603,7 @@ def staff_update_trek(trek_id):
     data = request.get_json(silent=True) or {}
     fields, errors = _validate_staff_trek_payload(data)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
 
     for key, value in fields.items():
         setattr(trek, key, value)
@@ -641,7 +641,7 @@ def staff_cancel_participant(trek_id, booking_id):
 
     booking = db.session.get(Booking, booking_id)
     if not booking or booking.trek_id != trek.id:
-        return jsonify(message="Booking not found."), 404
+        return jsonify(message="We couldn't find that booking."), 404
     if booking.status != BookingStatus.BOOKED:
         return jsonify(message="Only active bookings can be cancelled."), 400
 
@@ -653,7 +653,7 @@ def staff_cancel_participant(trek_id, booking_id):
     _send_cancellation_notification(booking.user, trek, cancelled_by="staff")
 
     return jsonify(
-        message="Booking cancelled.",
+        message="Booking cancelled. The trekker has been notified.",
         trek=_serialize_trek(trek),
         participant=_serialize_participant(booking),
     )
@@ -764,18 +764,18 @@ def user_list_treks():
 def user_book_trek(trek_id):
     trek = db.session.get(Trek, trek_id)
     if not trek:
-        return jsonify(message="Trek not found."), 404
+        return jsonify(message="We couldn't find that trek."), 404
 
     if trek.status != TrekStatus.OPEN:
-        return jsonify(message="This trek is not open for booking."), 400
+        return jsonify(message="This trek isn't open for bookings yet."), 400
     if trek.available_slots <= 0:
-        return jsonify(message="No slots available for this trek."), 400
+        return jsonify(message="This trek is fully booked right now."), 400
 
     existing = Booking.query.filter_by(
         user_id=current_user.id, trek_id=trek.id, status=BookingStatus.BOOKED
     ).first()
     if existing:
-        return jsonify(message="You already have an active booking for this trek."), 409
+        return jsonify(message="You're already booked for this trek."), 409
 
     booking = Booking(
         user_id=current_user.id,
@@ -791,7 +791,7 @@ def user_book_trek(trek_id):
     _send_booking_confirmation(current_user, trek)
 
     return jsonify(
-        message="Trek booked successfully.",
+        message="You're booked! See you on the trail.",
         booking=_serialize_user_booking(booking),
         trek=_serialize_user_trek(trek),
     ), 201
@@ -815,7 +815,7 @@ def user_list_bookings():
 def user_cancel_booking(booking_id):
     booking = db.session.get(Booking, booking_id)
     if not booking or booking.user_id != current_user.id:
-        return jsonify(message="Booking not found."), 404
+        return jsonify(message="We couldn't find that booking."), 404
     if booking.status != BookingStatus.BOOKED:
         return jsonify(message="Only active bookings can be cancelled."), 400
 
@@ -826,7 +826,7 @@ def user_cancel_booking(booking_id):
 
     _send_cancellation_notification(current_user, booking.trek, cancelled_by="user")
 
-    return jsonify(message="Booking cancelled.", booking=_serialize_user_booking(booking))
+    return jsonify(message="Your booking is cancelled — hope to see you on another trail soon.", booking=_serialize_user_booking(booking))
 
 
 def _simulate_payment_amount(trek):
@@ -838,7 +838,7 @@ def _send_payment_receipt(user, trek, amount):
     html = (
         f"<h3>Hi {user.username},</h3>"
         f"<p>We received your payment of <strong>₹{amount}</strong> for "
-        f"<strong>{trek.name}</strong>.</p>"
+        f"<strong>{trek.name}</strong> &mdash; your spot is secured.</p>"
         "<p>This was a simulated transaction &mdash; no real money was charged.</p>"
         "<p>See you on the trail! &mdash; Silver Fortnight Trekking Team</p>"
     )
@@ -886,16 +886,16 @@ def user_pay_booking(booking_id):
     else succeeds. No real charge is ever made."""
     booking = db.session.get(Booking, booking_id)
     if not booking or booking.user_id != current_user.id:
-        return jsonify(message="Booking not found."), 404
+        return jsonify(message="We couldn't find that booking."), 404
     if booking.status != BookingStatus.BOOKED:
         return jsonify(message="Only active bookings can be paid."), 400
     if booking.payment_status == PaymentStatus.PAID:
-        return jsonify(message="This booking has already been paid."), 400
+        return jsonify(message="This booking is already paid."), 400
 
     data = request.get_json(silent=True) or {}
     card_number, errors = _validate_payment_payload(data)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
 
     trek = booking.trek
     amount = _simulate_payment_amount(trek)
@@ -904,7 +904,7 @@ def user_pay_booking(booking_id):
         booking.payment_status = PaymentStatus.FAILED
         db.session.commit()
         return jsonify(
-            message="Payment was declined by the (simulated) gateway. Please try another card.",
+            message="The payment was declined (simulated gateway). Please try another card.",
             booking=_serialize_user_booking(booking),
         ), 402
 
@@ -915,7 +915,7 @@ def user_pay_booking(booking_id):
     _send_payment_receipt(current_user, trek, amount)
 
     return jsonify(
-        message="Payment successful. Your booking is confirmed.",
+        message="Payment received — your spot is secured!",
         amount=amount,
         booking=_serialize_user_booking(booking),
     )
@@ -928,18 +928,18 @@ def _validate_profile_update_payload(data, user):
     if "username" in data:
         username = (data.get("username") or "").strip()
         if not username or len(username) < 3:
-            errors["username"] = "Username is required and must be at least 3 characters."
+            errors["username"] = "Choose a username with at least 3 characters."
         elif User.query.filter(User.username == username, User.id != user.id).first():
-            errors["username"] = "That username is already taken."
+            errors["username"] = "That username is already taken. Try another one."
         else:
             fields["username"] = username
 
     if "email" in data:
         email = (data.get("email") or "").strip().lower()
         if not email or "@" not in email:
-            errors["email"] = "A valid email is required."
+            errors["email"] = "Please enter a valid email address."
         elif User.query.filter(User.email == email, User.id != user.id).first():
-            errors["email"] = "That email is already registered."
+            errors["email"] = "That email is already registered. Try signing in instead."
         else:
             fields["email"] = email
 
@@ -962,7 +962,7 @@ def user_update_profile():
     data = request.get_json(silent=True) or {}
     fields, errors = _validate_profile_update_payload(data, current_user)
     if errors:
-        return jsonify(message="Validation failed.", errors=errors), 400
+        return jsonify(message="Please double-check the details and try again.", errors=errors), 400
 
     new_password = fields.pop("_new_password", None)
     for key, value in fields.items():
@@ -973,7 +973,7 @@ def user_update_profile():
     db.session.commit()
 
     invalidate_user_caches()
-    return jsonify(message="Profile updated.", user=current_user.to_dict())
+    return jsonify(message="Your profile is up to date.", user=current_user.to_dict())
 
 
 @app.route("/api/user/bookings/export", methods=["POST"])
@@ -1010,6 +1010,6 @@ def user_export_bookings_download(task_id):
 
     filename = result.result.get("filename")
     if not filename or f"user{current_user.id}_" not in filename:
-        return jsonify(message="Export not found."), 404
+        return jsonify(message="We couldn't find that export."), 404
 
     return send_from_directory(app.config["EXPORT_DIR"], filename, as_attachment=True)

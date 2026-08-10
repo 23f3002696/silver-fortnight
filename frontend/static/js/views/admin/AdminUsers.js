@@ -38,7 +38,7 @@ export default {
         const { data } = await api.get("/admin/users", { params });
         this.users = data.users;
       } catch (err) {
-        this.error = err.response?.data?.message || "Could not load Trekkers.";
+        this.error = err.response?.data?.message || "We couldn't load the trekkers.";
       } finally {
         this.loading = false;
       }
@@ -62,7 +62,7 @@ export default {
         await this.fetchUsers();
       } catch (err) {
         window.showToast(
-          err.response?.data?.message || "Could not update this user.",
+          err.response?.data?.message || "We couldn't update this trekker.",
           "danger"
         );
       }
@@ -81,7 +81,7 @@ export default {
         const { data } = await api.get("/admin/bookings", { params: { user_id: user.id } });
         this.historyBookings = data.bookings;
       } catch (err) {
-        this.historyError = err.response?.data?.message || "Could not load this trekker's history.";
+        this.historyError = err.response?.data?.message || "We couldn't load this trekker's history.";
       } finally {
         this.historyLoading = false;
       }
@@ -89,7 +89,8 @@ export default {
   },
   template: `
     <div>
-      <h1 class="h4 mb-3">Trekkers</h1>
+      <h1 class="h4 mb-1">Trekkers</h1>
+      <p class="text-muted small mb-3">The community on your trails &mdash; review histories and manage access.</p>
 
       <div class="toolbar mb-3">
         <div class="input-group">
@@ -110,7 +111,7 @@ export default {
       </div>
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <div v-else class="border rounded">
-        <div v-if="users.length === 0" class="p-4 text-secondary text-center">No trekkers found.</div>
+        <div v-if="users.length === 0" class="p-4 text-secondary text-center">No trekkers found &mdash; members will appear here once they join.</div>
         <div
           v-for="user in users"
           :key="user.id"
@@ -161,7 +162,7 @@ export default {
               </div>
               <div v-else-if="historyError" class="alert alert-danger">{{ historyError }}</div>
               <div v-else-if="historyBookings.length === 0" class="text-secondary text-center p-3">
-                This trekker has no bookings yet.
+                This trekker hasn't booked any treks yet.
               </div>
               <div v-else class="table-responsive">
                 <table class="table table-borderless mb-0 align-middle">
