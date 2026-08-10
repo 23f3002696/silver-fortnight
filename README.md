@@ -1,4 +1,4 @@
-# Silver Fortnight — Trekking Management Portal
+# Silver Fortnight — Trekking Management Application
 
 A full-stack web application for trekking organizations to move away from spreadsheets, phone calls, and manual coordination. It centralizes trek creation, staff assignment, participant registration, slot management, and booking tracking into a single system, built with Flask, SQLAlchemy, Vue 3, and Bootstrap 5.
 
@@ -133,6 +133,7 @@ redis-server
 flask --app app init-db
 flask --app app create-admin                              # defaults: admin / admin
 flask --app app create-staff --username <u> --email <e> --password <p>  # optional
+flask --app app seed-demo                                 # optional: demo accounts, treks, bookings
 ```
 
 Trekker accounts self-register through the UI.

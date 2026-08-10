@@ -1,14 +1,27 @@
 from flask import Flask, render_template
 from application.config import LocalDevelopmentConfig
 from application.database import db
-from application.models import User, StaffProfile
+from application.models import Booking, StaffProfile, Trek, User, utc_now
 from application.security import jwt
 import click
-from application.constants import Role, StaffStatus
+from datetime import date, timedelta
+from application.constants import (
+    BookingStatus,
+    PaymentStatus,
+    Role,
+    StaffStatus,
+    TrekDifficulty,
+    TrekStatus,
+)
 from flask_cors import CORS
 from application.celery_init import celery_init_app
 from celery.schedules import crontab
-from application.cache import cache, invalidate_user_caches
+from application.cache import (
+    cache,
+    invalidate_staff_caches,
+    invalidate_trek_caches,
+    invalidate_user_caches,
+)
 
 def create_app():
     app = Flask(
@@ -97,5 +110,126 @@ def create_staff(username, email, password, name, contact):
     click.echo(f"Trek Staff user '{username}' created.")
  
  
+@app.cli.command("seed-demo")
+def seed_demo():
+    """Seed accounts, treks, and bookings for a ready-to-record demo."""
+    db.create_all()
+
+    if User.query.filter_by(username="trekker1").first():
+        click.echo("Demo data already present. Skipping.")
+        return
+
+    today = date.today()
+    last_month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+
+    if not User.query.filter_by(role=Role.ADMIN).first():
+        admin = User(username="admin", email="admin@silver-fortnight.com", role=Role.ADMIN)
+        admin.set_password("admin")
+        db.session.add(admin)
+
+    staff_user = User(username="staff", email="staff@silver-fortnight.com", role=Role.STAFF)
+    staff_user.set_password("staff")
+    staff_user.staff_profile = StaffProfile(
+        name="Asha Rao", contact_number="+91 98765 43210", status=StaffStatus.ACTIVE
+    )
+    db.session.add(staff_user)
+
+    trekkers = {}
+    for i in (1, 2, 3):
+        trekker = User(
+            username=f"trekker{i}",
+            email=f"trekker{i}@silver-fortnight.com",
+            role=Role.USER,
+        )
+        trekker.set_password(f"trekker{i}")
+        db.session.add(trekker)
+        trekkers[i] = trekker
+
+    db.session.flush()
+    staff_profile = staff_user.staff_profile
+
+    def make_trek(name, location, difficulty, duration, slots, status, start, end,
+                  assigned=True, description=None):
+        trek = Trek(
+            name=name,
+            location=location,
+            difficulty=difficulty,
+            duration_days=duration,
+            available_slots=slots,
+            status=status,
+            start_date=start,
+            end_date=end,
+            description=description,
+            assigned_staff_id=staff_profile.id if assigned else None,
+        )
+        db.session.add(trek)
+        return trek
+
+    sunrise = make_trek(
+        "Sunrise Silver Fortnight", "Kodai Hills", TrekDifficulty.MODERATE, 2, 2,
+        TrekStatus.OPEN, today + timedelta(days=1), today + timedelta(days=2),
+        description="Flagship sunrise trek along the silver ridge.",
+    )
+    fortress = make_trek(
+        "Full Fortress Trail", "Silver Fort", TrekDifficulty.EASY, 1, 0,
+        TrekStatus.OPEN, today + timedelta(days=6), today + timedelta(days=6),
+        description="Easy heritage trail around the old fortress.",
+    )
+    make_trek(
+        "Pending Peak", "North Ridge", TrekDifficulty.HARD, 3, 5,
+        TrekStatus.PENDING, today + timedelta(days=14), today + timedelta(days=16),
+        assigned=False, description="Awaiting admin approval.",
+    )
+    make_trek(
+        "Alpine Approval Walk", "Meadow Valley", TrekDifficulty.EASY, 2, 8,
+        TrekStatus.APPROVED, today + timedelta(days=10), today + timedelta(days=11),
+        description="Approved and ready to open.",
+    )
+    monsoon = make_trek(
+        "Monsoon Ridge", "Western Ghats", TrekDifficulty.MODERATE, 4, 0,
+        TrekStatus.COMPLETED, last_month_start + timedelta(days=3),
+        last_month_start + timedelta(days=6),
+        description="Last month's completed flagship trek.",
+    )
+    cavern = make_trek(
+        "Closed Cavern Walk", "Limestone Caves", TrekDifficulty.HARD, 2, 3,
+        TrekStatus.CLOSED, today + timedelta(days=20), today + timedelta(days=21),
+        description="Closed for the season.",
+    )
+
+    db.session.flush()
+
+    def make_booking(user, trek, status, payment, days_ago):
+        booking = Booking(
+            user_id=user.id,
+            trek_id=trek.id,
+            status=status,
+            payment_status=payment,
+            booking_date=utc_now() - timedelta(days=days_ago),
+        )
+        db.session.add(booking)
+
+    make_booking(trekkers[2], sunrise, BookingStatus.BOOKED, PaymentStatus.PENDING, 3)
+    make_booking(trekkers[2], fortress, BookingStatus.BOOKED, PaymentStatus.PAID, 5)
+    make_booking(trekkers[3], fortress, BookingStatus.BOOKED, PaymentStatus.PAID, 4)
+    make_booking(trekkers[1], monsoon, BookingStatus.COMPLETED, PaymentStatus.PAID, 40)
+    make_booking(trekkers[2], monsoon, BookingStatus.COMPLETED, PaymentStatus.PAID, 39)
+    make_booking(trekkers[3], cavern, BookingStatus.BOOKED, PaymentStatus.PAID, 10)
+    make_booking(trekkers[1], cavern, BookingStatus.CANCELLED, PaymentStatus.NOT_REQUIRED, 9)
+
+    db.session.commit()
+    invalidate_trek_caches()
+    invalidate_staff_caches()
+    invalidate_user_caches()
+
+    click.echo("Demo data seeded.")
+    click.echo("Logins: admin/admin, staff/staff, trekker1/trekker1 (also trekker2, trekker3).")
+    click.echo("Demo notes:")
+    click.echo(" - 'Sunrise Silver Fortnight' starts tomorrow (reminder emails) with 2 slots left.")
+    click.echo(" - 'Full Fortress Trail' is full (overbooking rejection).")
+    click.echo(" - 'Pending Peak' is pending with no staff (approval lifecycle).")
+    click.echo(" - 'Monsoon Ridge' completed last month (monthly report, charts, CSV export).")
+
+
 if __name__ == "__main__":
     app.run()
