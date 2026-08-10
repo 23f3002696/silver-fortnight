@@ -272,6 +272,11 @@ def admin_delete_trek(trek_id):
     trek = db.session.get(Trek, trek_id)
     if not trek:
         return jsonify(message="Trek not found."), 404
+    if trek.bookings:
+        return jsonify(
+            message="This trek has booking history and cannot be deleted. "
+            "Set its status to Closed instead to preserve trekking records."
+        ), 409
 
     db.session.delete(trek)
     db.session.commit()
@@ -413,12 +418,23 @@ def admin_list_bookings():
     if status:
         query = query.filter(Booking.status == status)
 
+    trek_id = request.args.get("trek_id", type=int)
+    if trek_id is not None:
+        query = query.filter(Booking.trek_id == trek_id)
+
+    user_id = request.args.get("user_id", type=int)
+    if user_id is not None:
+        query = query.filter(Booking.user_id == user_id)
+
     bookings = query.order_by(Booking.booking_date.desc()).all()
     result = []
     for b in bookings:
         d = b.to_dict()
         d["username"] = b.user.username
+        d["email"] = b.user.email
         d["trek_name"] = b.trek.name
+        d["trek_location"] = b.trek.location
+        d["trek_status"] = b.trek.status
         result.append(d)
     return jsonify(bookings=result)
 

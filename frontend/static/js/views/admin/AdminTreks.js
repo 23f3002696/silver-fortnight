@@ -11,6 +11,11 @@ const STATUS_BADGE = {
   closed: "text-bg-dark",
   completed: "text-bg-primary",
 };
+const BOOKING_STATUS_BADGE = {
+  booked: "text-bg-info",
+  cancelled: "text-bg-danger",
+  completed: "text-bg-success",
+};
 
 function emptyForm() {
   return {
@@ -42,11 +47,16 @@ export default {
       statuses: STATUSES,
       difficultyBadge: DIFFICULTY_BADGE,
       statusBadge: STATUS_BADGE,
+      bookingStatusBadge: BOOKING_STATUS_BADGE,
       form: emptyForm(),
       formErrors: {},
       saving: false,
       editingId: null,
       searchTimer: null,
+      historyTrek: null,
+      historyBookings: [],
+      historyLoading: false,
+      historyError: "",
     };
   },
   async created() {
@@ -54,6 +64,7 @@ export default {
   },
   mounted() {
     this.modal = new bootstrap.Modal(this.$refs.trekModalEl);
+    this.historyModal = new bootstrap.Modal(this.$refs.historyModalEl);
   },
   methods: {
     async fetchTreks() {
@@ -145,6 +156,25 @@ export default {
         alert(err.response?.data?.message || "Could not delete this trek.");
       }
     },
+    formatDate(value) {
+      if (!value) return "\u2014";
+      return new Date(value).toLocaleString();
+    },
+    async openHistory(trek) {
+      this.historyTrek = trek;
+      this.historyBookings = [];
+      this.historyError = "";
+      this.historyLoading = true;
+      this.historyModal.show();
+      try {
+        const { data } = await api.get("/admin/bookings", { params: { trek_id: trek.id } });
+        this.historyBookings = data.bookings;
+      } catch (err) {
+        this.historyError = err.response?.data?.message || "Could not load booking history for this trek.";
+      } finally {
+        this.historyLoading = false;
+      }
+    },
   },
   template: `
     <div>
@@ -215,10 +245,13 @@ export default {
                 </td>
                 <td>{{ trek.bookings_count }}</td>
                 <td class="text-center" style="white-space: nowrap;">
-                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)">
+                  <button class="btn btn-sm btn-outline-secondary me-1" @click="openHistory(trek)" title="Booking history">
+                    <i class="bi bi-clock-history"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary me-1" @click="openEditModal(trek)" title="Edit trek">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="deleteTrek(trek)">
+                  <button class="btn btn-sm btn-outline-danger" @click="deleteTrek(trek)" title="Delete trek">
                     <i class="bi bi-trash3"></i>
                   </button>
                 </td>
@@ -331,6 +364,54 @@ export default {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking History Modal -->
+      <div class="modal fade" tabindex="-1" ref="historyModalEl">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                Booking History
+                <span class="text-muted" v-if="historyTrek">&mdash; {{ historyTrek.name }}</span>
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="historyLoading" class="text-muted">Loading...</div>
+              <div v-else-if="historyError" class="alert alert-danger">{{ historyError }}</div>
+              <div v-else-if="historyBookings.length === 0" class="text-secondary text-center p-3">
+                No trekkers have ever booked this trek.
+              </div>
+              <div v-else class="table-responsive">
+                <table class="table table-borderless mb-0 align-middle">
+                  <thead class="border-bottom">
+                    <tr>
+                      <th>Trekker</th>
+                      <th>Booked On</th>
+                      <th>Status</th>
+                      <th>Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="b in historyBookings" :key="b.id">
+                      <td>
+                        <div class="fw-medium">{{ b.username }}</div>
+                        <div class="small text-muted">{{ b.email }}</div>
+                      </td>
+                      <td>{{ formatDate(b.booking_date) }}</td>
+                      <td><span class="badge" :class="bookingStatusBadge[b.status]">{{ b.status }}</span></td>
+                      <td><span class="text-muted small text-capitalize">{{ b.payment_status.replace('_', ' ') }}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
           </div>
         </div>
       </div>
