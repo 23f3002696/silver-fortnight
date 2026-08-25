@@ -38,6 +38,30 @@ export function destroyChart(chart) {
   if (chart) chart.destroy();
 }
 
+export function centerTextPlugin(label = "TOTAL") {
+  return {
+    id: "centerText",
+    afterDraw(chart) {
+      const { ctx, chartArea } = chart;
+      const dataset = chart.data.datasets[0];
+      if (!chartArea || !dataset) return;
+      const total = dataset.data.reduce((sum, v) => sum + (Number(v) || 0), 0);
+      const cx = (chartArea.left + chartArea.right) / 2;
+      const cy = (chartArea.top + chartArea.bottom) / 2;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#1f2b26";
+      ctx.font = "700 22px Inter, system-ui, sans-serif";
+      ctx.fillText(String(total), cx, cy - 9);
+      ctx.fillStyle = "#7a8a83";
+      ctx.font = "600 10px Inter, system-ui, sans-serif";
+      ctx.fillText(label, cx, cy + 13);
+      ctx.restore();
+    },
+  };
+}
+
 export function formatMonthLabel(key) {
   const d = new Date(`${key}-01T00:00:00`);
   if (isNaN(d)) return key;

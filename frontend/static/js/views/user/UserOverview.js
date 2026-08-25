@@ -96,15 +96,6 @@ export default {
             </div>
           </div>
         </div>
-
-        <div class="d-flex flex-wrap gap-2 mt-4">
-          <router-link to="/user/treks" class="btn btn-primary btn-sm">
-            <i class="bi bi-compass me-1"></i>Explore Treks
-          </router-link>
-          <router-link to="/user/bookings" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-clock-history me-1"></i>My Bookings
-          </router-link>
-        </div>
       </div>
     </div>
   `,

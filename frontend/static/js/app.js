@@ -37,11 +37,11 @@ const App = {
         this.confirmState = { show: true, message, resolve };
       });
     },
-    _onConfirmYes() {
+    onConfirmYes() {
       if (this.confirmState.resolve) this.confirmState.resolve(true);
       this.confirmState = { show: false, message: "", resolve: null };
     },
-    _onConfirmNo() {
+    onConfirmNo() {
       if (this.confirmState.resolve) this.confirmState.resolve(false);
       this.confirmState = { show: false, message: "", resolve: null };
     },
@@ -199,7 +199,7 @@ const App = {
         class="modal d-block"
         tabindex="-1"
         style="background: rgba(0,0,0,.45);"
-        @keydown.esc="_onConfirmNo"
+        @keydown.esc="onConfirmNo"
       >
         <div class="modal-dialog modal-dialog-centered modal-sm">
           <div class="modal-content border-0 shadow-lg" style="border-radius: 0.875rem;">
@@ -208,8 +208,8 @@ const App = {
               <p class="mb-0 fw-medium">{{ confirmState.message }}</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pt-0 pb-4 gap-2">
-              <button class="btn btn-outline-secondary px-4" @click="_onConfirmNo">Cancel</button>
-              <button class="btn btn-danger px-4" @click="_onConfirmYes">Confirm</button>
+              <button class="btn btn-outline-secondary px-4" @click="onConfirmNo">Cancel</button>
+              <button class="btn btn-danger px-4" @click="onConfirmYes">Confirm</button>
             </div>
           </div>
         </div>

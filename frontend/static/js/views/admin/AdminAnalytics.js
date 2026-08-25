@@ -6,6 +6,7 @@ import {
   renderChart,
   destroyChart,
   formatMonthLabel,
+  centerTextPlugin,
 } from "../../charts.js";
 
 export default {
@@ -16,12 +17,22 @@ export default {
       error: "",
       stats: null,
       charts: [],
+      difficultyColors: DIFFICULTY_COLORS,
     };
   },
   async created() {
     await this.fetchStats();
   },
   computed: {
+    difficultyBreakdown() {
+      const difficulty = this.stats?.participation_by_difficulty || {};
+      const total = Object.values(difficulty).reduce((sum, v) => sum + v, 0);
+      return Object.entries(difficulty).map(([label, count]) => ({
+        label,
+        count,
+        pct: total > 0 ? Math.round((count / total) * 100) : 0,
+      }));
+    },
     hasTrend() {
       const trend = this.stats?.monthly_trend;
       if (!trend) return false;
@@ -131,9 +142,10 @@ export default {
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              cutout: "62%",
+              cutout: "68%",
               plugins: { legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
             },
+            plugins: [centerTextPlugin("BOOKINGS")],
           })
         );
       }
@@ -188,9 +200,10 @@ export default {
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              cutout: "62%",
-              plugins: { legend: { position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
+              cutout: "68%",
+              plugins: { legend: { display: false } },
             },
+            plugins: [centerTextPlugin("TREKKERS")],
           })
         );
       }
@@ -253,60 +266,84 @@ export default {
         <div v-if="hasTrend || hasStatus" class="row g-3 mt-1">
           <div v-if="hasTrend" class="col-lg-8">
             <div class="border rounded p-4 h-100">
-              <h6 class="fw-semibold mb-1">Monthly Booking &amp; Participation Trend</h6>
+              <h6 class="fw-semibold mb-1"><i class="bi bi-activity me-2 text-primary"></i>Monthly Booking &amp; Participation Trend</h6>
               <p class="text-muted small mb-3">Bookings made and unique participants per month over the last 12 months.</p>
               <div style="height: 280px;"><canvas ref="trendCanvas"></canvas></div>
             </div>
           </div>
           <div v-if="hasStatus" class="col-lg-4">
             <div class="border rounded p-4 h-100">
-              <h6 class="fw-semibold mb-1">Bookings by Status</h6>
+              <h6 class="fw-semibold mb-1"><i class="bi bi-pie-chart me-2 text-primary"></i>Bookings by Status</h6>
               <p class="text-muted small mb-3">How every booking ended up, all-time.</p>
               <div style="height: 280px;"><canvas ref="statusCanvas"></canvas></div>
             </div>
           </div>
         </div>
 
-        <div v-if="hasPopular || hasParticipants" class="row g-3 mt-1">
+        <div v-if="hasPopular || hasParticipants" class="row g-3 mt-1 align-items-stretch">
           <div v-if="hasPopular" class="col-lg-7">
-            <div class="border rounded p-4 h-100">
-              <h6 class="fw-semibold mb-1">Trending Treks</h6>
+            <div class="border rounded p-4 h-100 d-flex flex-column">
+              <h6 class="fw-semibold mb-1"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Trending Treks</h6>
               <p class="text-muted small mb-3">Top 5 treks ranked by confirmed bookings.</p>
-              <div :style="{ height: Math.max(180, stats.popular_treks.length * 44) + 'px' }">
+              <div class="flex-grow-1" style="min-height: 220px;">
                 <canvas ref="popularCanvas"></canvas>
               </div>
             </div>
           </div>
           <div v-if="hasParticipants" class="col-lg-5">
-            <div class="border rounded p-4 h-100">
-              <h6 class="fw-semibold mb-1">Top Participants</h6>
+            <div class="border rounded p-4 h-100 d-flex flex-column">
+              <h6 class="fw-semibold mb-1"><i class="bi bi-award me-2 text-primary"></i>Top Participants</h6>
               <p class="text-muted small mb-3">Your most seasoned trekkers, ranked by confirmed bookings.</p>
-              <table class="table table-sm table-borderless align-middle mb-0">
-                <thead class="border-bottom">
-                  <tr>
-                    <th>#</th>
-                    <th>Trekker</th>
-                    <th class="text-end">Bookings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in stats.top_participants" :key="row.username">
-                    <td class="text-muted">{{ index + 1 }}</td>
-                    <td class="fw-semibold">{{ row.username }}</td>
-                    <td class="text-end">{{ row.bookings }}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="flex-grow-1 d-flex flex-column justify-content-center">
+                <table class="table table-sm table-borderless align-middle mb-0">
+                  <thead class="border-bottom">
+                    <tr>
+                      <th>#</th>
+                      <th>Trekker</th>
+                      <th class="text-end">Bookings</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, index) in stats.top_participants" :key="row.username">
+                      <td class="text-muted">{{ index + 1 }}</td>
+                      <td class="fw-semibold">{{ row.username }}</td>
+                      <td class="text-end">{{ row.bookings }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
 
         <div v-if="hasDifficulty" class="row g-3 mt-1">
-          <div class="col-lg-4">
+          <div class="col-12">
             <div class="border rounded p-4">
-              <h6 class="fw-semibold mb-1">Participation by Difficulty</h6>
+              <h6 class="fw-semibold mb-1"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>Participation by Difficulty</h6>
               <p class="text-muted small mb-3">Confirmed bookings grouped by how tough the trail is.</p>
-              <div style="height: 240px;"><canvas ref="difficultyCanvas"></canvas></div>
+              <div class="row align-items-center g-4">
+                <div class="col-md-5 col-lg-4">
+                  <div style="height: 220px;"><canvas ref="difficultyCanvas"></canvas></div>
+                </div>
+                <div class="col-md-7 col-lg-8">
+                  <div v-for="row in difficultyBreakdown" :key="row.label" class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                      <span class="text-capitalize fw-medium">{{ row.label }}</span>
+                      <span class="text-muted">{{ row.count }} ({{ row.pct }}%)</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div
+                        class="progress-bar"
+                        role="progressbar"
+                        :style="{ width: row.pct + '%', backgroundColor: difficultyColors[row.label] }"
+                        :aria-valuenow="row.pct"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
